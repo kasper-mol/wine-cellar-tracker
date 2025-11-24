@@ -1,0 +1,124 @@
+<script setup lang="ts">
+import { reactive, ref, computed, watch, defineExpose } from 'vue'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { storeToRefs } from 'pinia'
+import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useWineRegionsStore } from '@/stores/wineRegions'
+import { useWineAppellationsStore } from '@/stores/wineAppellations'
+
+const wineCountriesStore = useWineCountriesStore()
+const wineRegionsStore = useWineRegionsStore()
+const wineAppellationsStore = useWineAppellationsStore()
+
+const { countries } = storeToRefs(wineCountriesStore)
+const { regions } = storeToRefs(wineRegionsStore)
+
+const dialogOpen = ref(false)
+const isCreating = ref(false)
+const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
+const selectedCountryId = ref<string | null>(countries.value[0]?.id ?? null)
+
+const createForm = reactive({
+  name: '',
+  regionId: '',
+})
+
+const regionsForCountry = computed(() =>
+  regions.value.filter((r) => r.country_id === selectedCountryId.value),
+)
+
+watch(selectedCountryId, (val) => {
+  const firstRegion = regions.value.find((r) => r.country_id === val)
+  createForm.regionId = firstRegion?.id ?? ''
+})
+
+async function handleCreate() {
+  const name = createForm.name.trim()
+  if (!name) {
+    feedback.value = { type: 'error', message: 'Appellation name required.' }
+    return
+  }
+  if (!createForm.regionId) {
+    feedback.value = { type: 'error', message: 'Select a region.' }
+    return
+  }
+
+  isCreating.value = true
+  feedback.value = null
+
+  try {
+    await wineAppellationsStore.create({ name, region_id: createForm.regionId })
+    feedback.value = { type: 'success', message: 'Appellation added.' }
+    closeDialog()
+  } catch (error) {
+    feedback.value = {
+      type: 'error',
+      message: error instanceof Error ? error.message : 'Failed to create.',
+    }
+  } finally {
+    isCreating.value = false
+  }
+}
+
+function openDialog() {
+  dialogOpen.value = true
+}
+function closeDialog() {
+  dialogOpen.value = false
+  createForm.name = ''
+  createForm.regionId = ''
+  selectedCountryId.value = countries.value[0]?.id ?? null
+  feedback.value = null
+}
+
+defineExpose({ openDialog })
+</script>
+
+<template>
+  <Button @click="openDialog">Add Appellation</Button>
+  <Dialog v-model:open="dialogOpen">
+    <DialogContent class="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Add Appellation</DialogTitle>
+      </DialogHeader>
+      <form class="space-y-4" @submit.prevent="handleCreate">
+        <div class="space-y-2">
+          <Label>Name</Label>
+          <Input v-model="createForm.name" placeholder="e.g. Pauillac" />
+        </div>
+        <div class="space-y-2">
+          <Label>Country</Label>
+          <select v-model="selectedCountryId" class="w-full border rounded p-2">
+            <option value="" disabled>Select a country</option>
+            <option v-for="c in countries" :key="c.id" :value="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+        <div class="space-y-2">
+          <Label>Region</Label>
+          <select v-model="createForm.regionId" class="w-full border rounded p-2">
+            <option value="" disabled>Select a region</option>
+            <option v-for="r in regionsForCountry" :key="r.id" :value="r.id">
+              {{ r.name }}
+            </option>
+          </select>
+        </div>
+        <DialogFooter class="flex justify-end gap-2">
+          <Button variant="outline" type="button" @click="closeDialog">Cancel</Button>
+          <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>
+        </DialogFooter>
+        <p v-if="feedback" :class="feedback.type === 'error' ? 'text-red-500' : 'text-green-500'">
+          {{ feedback.message }}
+        </p>
+      </form>
+    </DialogContent>
+  </Dialog>
+</template>
