@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, defineExpose } from 'vue'
+import { ref, reactive, computed, watch, defineExpose, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,10 +10,12 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { storeToRefs } from 'pinia'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
+import GrapeAppellationManager from './GrapeAppellationManager.vue'
 
 const props = defineProps<{ appellationId: string | undefined }>()
 const emit = defineEmits<{
@@ -25,11 +27,13 @@ const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
 
 const { countries } = storeToRefs(wineCountriesStore)
-const dialogOpen = ref(true)
+const dialogOpen = ref(false)
 const isUpdating = ref(false)
 const editForm = reactive({
   name: '',
   regionId: '',
+  imageFile: null as File | null,
+  currentImageUrl: '' as string | null,
 })
 const selectedCountryId = ref<string | null>(null)
 
@@ -43,12 +47,18 @@ const regionsForCountry = computed(() =>
     : [],
 )
 
+onMounted(() => {
+  console.log(selectedAppellation.value)
+})
+
 watch(
   selectedAppellation,
   (appellation?) => {
     editForm.name = appellation?.name ?? ''
     selectedCountryId.value = appellation?.region?.country_id ?? null
     editForm.regionId = appellation?.region_id ?? ''
+    editForm.currentImageUrl = appellation?.image_url ?? ''
+    editForm.imageFile = null
   },
   { immediate: true },
 )
@@ -64,6 +74,7 @@ async function handleUpdate() {
     await wineAppellationsStore.update(props.appellationId, {
       name,
       region_id: editForm.regionId,
+      imageFile: editForm.imageFile,
     })
     closeDialog()
     emit('updated')
@@ -113,6 +124,22 @@ defineExpose({ openDialog })
             <option v-for="r in regionsForCountry" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
         </div>
+        <div class="space-y-2">
+          <ImageUploader
+            v-model="editForm.imageFile"
+            :label="editForm.currentImageUrl ? 'Change Appellation Image' : 'Appellation Image (optional)'"
+          />
+          <div v-if="editForm.currentImageUrl && !editForm.imageFile" class="space-y-1">
+            <Label>Current Image</Label>
+            <img
+              :src="editForm.currentImageUrl"
+              alt="Current Appellation Image"
+              class="h-32 w-32 rounded-md border object-cover"
+            />
+          </div>
+        </div>
+        <GrapeAppellationManager :appellationId="appellationId" />
+
         <DialogFooter>
           <Button type="button" variant="outline" @click="closeDialog">Cancel</Button>
           <Button type="submit" :disabled="isUpdating">{{

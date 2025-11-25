@@ -2,13 +2,17 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import DashboardPage from '@/pages/DashboardPage.vue'
 import SignUpPage from '@/pages/SignUpPage.vue'
+import CountriesPage from '@/pages/countries.vue'
+import RegionsPage from '@/pages/regions.vue'
+import AppellationsPage from '@/pages/appellations.vue'
+import CountryDetailPage from '@/pages/country/[id].vue'
+import RegionDetailPage from '@/pages/region/[id].vue'
+import AppellationDetailPage from '@/pages/appellation/[id].vue'
 import UserManagementPage from '@/pages/manage/UserManagementPage.vue'
 import WineAppellationsPage from '@/pages/manage/WineAppellationsPage.vue'
 import WineCountriesPage from '@/pages/manage/WineCountriesPage.vue'
 import WineRegionsPage from '@/pages/manage/WineRegionsPage.vue'
 import GrapeVarietiesPage from '@/pages/manage/GrapeVarietiesPage.vue'
-import WineDefinitionsPage from '@/pages/manage/WineDefinitions/index.vue'
-import WineDefinitionDetailPage from '@/pages/manage/WineDefinitions/[id].vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,6 +26,39 @@ const router = createRouter({
       path: '/signup',
       name: 'signup',
       component: SignUpPage,
+    },
+    {
+      path: '/countries',
+      name: 'countries',
+      component: CountriesPage,
+    },
+    {
+      path: '/regions',
+      name: 'regions',
+      component: RegionsPage,
+    },
+    {
+      path: '/appellations',
+      name: 'appellations',
+      component: AppellationsPage,
+    },
+    {
+      path: '/country/:id',
+      name: 'country-detail',
+      component: CountryDetailPage,
+      props: true,
+    },
+    {
+      path: '/region/:id',
+      name: 'region-detail',
+      component: RegionDetailPage,
+      props: true,
+    },
+    {
+      path: '/appellation/:id',
+      name: 'appellation-detail',
+      component: AppellationDetailPage,
+      props: true,
     },
     {
       path: '/users',
@@ -47,17 +84,6 @@ const router = createRouter({
       path: '/manage/wine-appellations',
       name: 'wine-appellations',
       component: WineAppellationsPage,
-    },
-    {
-      path: '/manage/wine-definitions',
-      name: 'WineDefinitionsList',
-      component: WineDefinitionsPage,
-    },
-    {
-      path: '/manage/wine-definitions/:id',
-      name: 'WineDefinitionDetail',
-      component: WineDefinitionDetailPage,
-      props: true,
     },
   ],
 })

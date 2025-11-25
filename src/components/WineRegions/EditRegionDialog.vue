@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 
@@ -30,7 +31,12 @@ function closeDialog() {
 }
 defineExpose({ openDialog })
 
-const form = reactive({ name: '', countryId: '' })
+const form = reactive({
+  name: '',
+  countryId: '',
+  imageFile: null as File | null,
+  currentImageUrl: '' as string | null,
+})
 
 const selectedRegion = computed(
   () => wineRegionsStore.regions.find((r) => r.id === props.regionId) ?? null,
@@ -41,6 +47,8 @@ watch(
   (region) => {
     form.name = region?.name ?? ''
     form.countryId = region?.country_id ?? ''
+    form.currentImageUrl = region?.image_url ?? ''
+    form.imageFile = null
   },
   { immediate: true },
 )
@@ -63,6 +71,7 @@ async function handleUpdate() {
     await wineRegionsStore.update(selectedRegion.value.id, {
       name: form.name.trim(),
       country_id: form.countryId,
+      imageFile: form.imageFile,
     })
     feedback.value = { type: 'success', message: 'Region updated successfully.' }
     closeDialog()
@@ -105,6 +114,20 @@ async function handleUpdate() {
               {{ country.name }}
             </option>
           </select>
+        </div>
+        <div class="space-y-2">
+          <ImageUploader
+            v-model="form.imageFile"
+            :label="form.currentImageUrl ? 'Change Region Image' : 'Region Image (optional)'"
+          />
+          <div v-if="form.currentImageUrl && !form.imageFile" class="space-y-1">
+            <Label>Current Image</Label>
+            <img
+              :src="form.currentImageUrl"
+              alt="Current Region Image"
+              class="h-32 w-32 rounded-md border object-cover"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button type="submit" :disabled="isUpdating">{{

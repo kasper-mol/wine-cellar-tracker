@@ -6,6 +6,7 @@ export interface WineCountryRecord {
   id: string
   name: string
   code: string | null
+  image_url: string | null
   created_at: string
   updated_at: string
 }
@@ -13,11 +14,13 @@ export interface WineCountryRecord {
 export interface CreateWineCountryPayload {
   name: string
   code?: string | null
+  imageFile?: File | null
 }
 
 export interface UpdateWineCountryPayload {
   name?: string
   code?: string | null
+  imageFile?: File | null
 }
 
 function throwIfError(error: PostgrestError | null) {
@@ -34,8 +37,8 @@ export async function fetchWineCountries() {
 }
 
 export async function createWineCountry(payload: CreateWineCountryPayload) {
-  const client = getSupabaseClient()
-  const { data, error } = await client
+  const supabase = getSupabaseClient()
+  const { data: created, error } = await supabase
     .from('wine_countries')
     .insert({
       name: payload.name.trim(),
@@ -44,16 +47,60 @@ export async function createWineCountry(payload: CreateWineCountryPayload) {
     .select()
     .single()
   throwIfError(error)
-  return data as WineCountryRecord
+
+  if (!payload.imageFile) {
+    return created as WineCountryRecord
+  }
+
+  const ext = payload.imageFile.name.split('.').pop() || 'jpg'
+  const filePath = `countries/${created.id}.${ext}`
+  const { error: uploadError } = await supabase.storage
+    .from('country-images')
+    .upload(filePath, payload.imageFile, { upsert: true })
+  if (uploadError) {
+    await supabase.from('wine_countries').delete().eq('id', created.id)
+    throw uploadError
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from('country-images').getPublicUrl(filePath)
+
+  const { error: updateError } = await supabase
+    .from('wine_countries')
+    .update({ image_url: publicUrl })
+    .eq('id', created.id)
+  if (updateError) {
+    await supabase.from('wine_countries').delete().eq('id', created.id)
+    throw updateError
+  }
+
+  return { ...(created as WineCountryRecord), image_url: publicUrl }
 }
 
 export async function updateWineCountry(id: string, payload: UpdateWineCountryPayload) {
-  const client = getSupabaseClient()
-  const { data, error } = await client
+  const supabase = getSupabaseClient()
+  let image_url: string | null = null
+
+  if (payload.imageFile) {
+    const ext = payload.imageFile.name.split('.').pop() || 'jpg'
+    const filePath = `countries/${id}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('country-images')
+      .upload(filePath, payload.imageFile, { upsert: true })
+    if (uploadError) throw uploadError
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('country-images').getPublicUrl(filePath)
+    image_url = publicUrl
+  }
+
+  const { data, error } = await supabase
     .from('wine_countries')
     .update({
       ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
       ...(payload.code !== undefined ? { code: payload.code?.trim() || null } : {}),
+      ...(image_url ? { image_url } : {}),
     })
     .eq('id', id)
     .select()

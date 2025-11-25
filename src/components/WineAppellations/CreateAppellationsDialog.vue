@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { storeToRefs } from 'pinia'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
@@ -30,6 +31,7 @@ const selectedCountryId = ref<string | null>(countries.value[0]?.id ?? null)
 const createForm = reactive({
   name: '',
   regionId: '',
+  imageFile: null as File | null,
 })
 
 const regionsForCountry = computed(() =>
@@ -56,7 +58,7 @@ async function handleCreate() {
   feedback.value = null
 
   try {
-    await wineAppellationsStore.create({ name, region_id: createForm.regionId })
+    await wineAppellationsStore.create({ name, region_id: createForm.regionId, imageFile: createForm.imageFile })
     feedback.value = { type: 'success', message: 'Appellation added.' }
     closeDialog()
   } catch (error) {
@@ -76,6 +78,7 @@ function closeDialog() {
   dialogOpen.value = false
   createForm.name = ''
   createForm.regionId = ''
+  createForm.imageFile = null
   selectedCountryId.value = countries.value[0]?.id ?? null
   feedback.value = null
 }
@@ -111,6 +114,7 @@ defineExpose({ openDialog })
             </option>
           </select>
         </div>
+        <ImageUploader v-model="createForm.imageFile" label="Appellation Image (optional)" />
         <DialogFooter class="flex justify-end gap-2">
           <Button variant="outline" type="button" @click="closeDialog">Cancel</Button>
           <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>

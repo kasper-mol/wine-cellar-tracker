@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 
 const props = defineProps<{ countryId: string | null }>()
@@ -18,7 +19,12 @@ const wineCountriesStore = useWineCountriesStore()
 
 const isUpdating = ref(false)
 const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
-const editForm = reactive({ name: '', code: '' })
+const editForm = reactive({
+  name: '',
+  code: '',
+  imageFile: null as File | null,
+  currentImageUrl: '' as string | null,
+})
 const selectedCountry = computed(
   () => wineCountriesStore.countries.find((country) => country.id === props.countryId) ?? null,
 )
@@ -28,6 +34,8 @@ watch(
   (country) => {
     editForm.name = country?.name ?? ''
     editForm.code = country?.code ?? ''
+    editForm.currentImageUrl = country?.image_url ?? ''
+    editForm.imageFile = null
   },
   { immediate: true },
 )
@@ -55,7 +63,6 @@ async function handleUpdate() {
     feedback.value = { type: 'error', message: 'Country name is required.' }
     return
   }
-
   isUpdating.value = true
   feedback.value = null
 
@@ -63,6 +70,7 @@ async function handleUpdate() {
     await wineCountriesStore.update(selectedCountry.value.id, {
       name,
       code: normalizeCode(editForm.code) || null,
+      imageFile: editForm.imageFile,
     })
     feedback.value = { type: 'success', message: 'Country updated successfully.' }
     closeDialog()
@@ -93,6 +101,20 @@ async function handleUpdate() {
             >ISO Code <span class="text-xs text-muted-foreground">(optional)</span></Label
           >
           <Input id="editCode" v-model="editForm.code" class="uppercase" maxlength="3" />
+        </div>
+        <div class="space-y-2">
+          <ImageUploader
+            v-model="editForm.imageFile"
+            :label="editForm.currentImageUrl ? 'Change Country Image' : 'Country Image (optional)'"
+          />
+          <div v-if="editForm.currentImageUrl && !editForm.imageFile" class="pt-2 space-y-1">
+            <Label>Current Image</Label>
+            <img
+              :src="editForm.currentImageUrl"
+              alt="Current Country Image"
+              class="w-32 h-32 rounded-md border object-cover"
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button type="submit" :disabled="isUpdating">{{

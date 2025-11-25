@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 
 const wineCountriesStore = useWineCountriesStore()
 
 const dialogOpen = ref(false)
-const form = reactive({ name: '', code: '' })
+const form = reactive({ name: '', code: '', imageFile: null as File | null })
 const isCreating = ref(false)
 const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -37,6 +38,7 @@ async function handleCreate() {
     await wineCountriesStore.create({
       name,
       code: normalizeCode(form.code) || null,
+      imageFile: form.imageFile,
     })
     feedback.value = { type: 'success', message: 'Country added successfully.' }
     closeDialog()
@@ -57,6 +59,7 @@ function closeDialog() {
   dialogOpen.value = false
   form.name = ''
   form.code = ''
+  form.imageFile = null
   feedback.value = null
 }
 
@@ -81,6 +84,7 @@ defineExpose({ openDialog })
           </Label>
           <Input id="code" v-model="form.code" placeholder="FR" class="uppercase" maxlength="3" />
         </div>
+        <ImageUploader v-model="form.imageFile" label="Country Image (optional)" />
         <DialogFooter class="flex justify-end gap-2">
           <Button variant="outline" type="button" @click="closeDialog">Cancel</Button>
           <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>

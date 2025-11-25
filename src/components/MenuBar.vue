@@ -15,10 +15,24 @@ import { RouterLink } from 'vue-router'
     <MenubarMenu>
       <RouterLink
         v-slot="{ isActive }"
-        to="/"
+        to="/countries"
         class="rounded-md px-3 py-1.5 transition hover:bg-muted"
       >
-        <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Dashboard</span>
+        <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Countries</span>
+      </RouterLink>
+      <RouterLink
+        v-slot="{ isActive }"
+        to="/regions"
+        class="rounded-md px-3 py-1.5 transition hover:bg-muted"
+      >
+        <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Regions</span>
+      </RouterLink>
+      <RouterLink
+        v-slot="{ isActive }"
+        to="/appellations"
+        class="rounded-md px-3 py-1.5 transition hover:bg-muted"
+      >
+        <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Appellations</span>
       </RouterLink>
       <MenubarTrigger class="rounded-md px-3 py-1.5 transition hover:bg-muted">
         Manage

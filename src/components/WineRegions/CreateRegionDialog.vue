@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import ImageUploader from '@/components/ImageUploader.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 
@@ -24,6 +25,7 @@ const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null
 const form = reactive({
   name: '',
   countryId: '',
+  imageFile: null as File | null,
 })
 
 async function handleCreate() {
@@ -43,9 +45,11 @@ async function handleCreate() {
     await wineRegionsStore.create({
       name: form.name.trim(),
       country_id: form.countryId,
+      imageFile: form.imageFile,
     })
     form.name = ''
     form.countryId = ''
+    form.imageFile = null
     closeDialog()
   } catch (error) {
     feedback.value = { type: 'error', message: (error as Error).message || 'Failed to add region.' }
@@ -94,6 +98,7 @@ defineExpose({ openDialog })
             </option>
           </select>
         </div>
+        <ImageUploader v-model="form.imageFile" label="Region Image (optional)" />
         <DialogFooter>
           <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>
           <Button type="button" variant="outline" @click="closeDialog">Cancel</Button>

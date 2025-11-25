@@ -6,24 +6,26 @@ import EditAppellationDialog from '@/components/WineAppellations/EditAppellation
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
+import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
 
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
+const wineGrapeVaritiesStore = useWineGrapeVarietiesStore()
 
 const selectedAppellationId = ref<string | null>(null)
-const showEditDialog = ref(false)
+const editDialogRef = ref<InstanceType<typeof EditAppellationDialog> | null>(null)
 
 onMounted(async () => {
   await wineCountriesStore.loadAll()
   await wineRegionsStore.loadAll()
   await wineAppellationsStore.loadAll()
+  await wineGrapeVaritiesStore.loadAll()
 })
 
 function handleEditAppellation(id: string) {
-  console.log('test')
   selectedAppellationId.value = id
-  showEditDialog.value = true
+  editDialogRef.value?.openDialog()
 }
 
 async function handleDeleteAppellation(id: string) {
@@ -57,8 +59,8 @@ async function handleDeleteAppellation(id: string) {
         <CreateAppellationDialog />
 
         <EditAppellationDialog
-          v-if="selectedAppellationId && showEditDialog"
-          :appellationId="selectedAppellationId"
+          ref="editDialogRef"
+          :appellationId="selectedAppellationId || undefined"
         />
       </div>
     </div>
