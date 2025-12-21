@@ -129,7 +129,7 @@ function navigateToRegion(id: string) {
           class="group cursor-pointer overflow-hidden border-border bg-card p-0 transition-all hover:shadow-lg"
           @click="navigateToRegion(region.id)"
         >
-          <div class="h-44 w-full overflow-hidden">
+          <div class="h-44 overflow-hidden">
             <img
               v-if="region.image_url"
               :src="region.image_url"

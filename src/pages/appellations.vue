@@ -160,7 +160,7 @@ function navigateToAppellation(id: string) {
         No appellations match your filters yet.
       </div>
 
-      <div v-else class="grid gap-8">
+      <div v-else class="grid grid-cols-2 gap-8">
         <Card
           v-for="appellation in filteredAppellations"
           :key="appellation.id"

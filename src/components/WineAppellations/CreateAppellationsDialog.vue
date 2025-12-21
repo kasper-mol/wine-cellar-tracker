@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import GrapeAppellationManager from './GrapeAppellationManager.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import { storeToRefs } from 'pinia'
 import { useWineCountriesStore } from '@/stores/wineCountries'
@@ -58,7 +59,11 @@ async function handleCreate() {
   feedback.value = null
 
   try {
-    await wineAppellationsStore.create({ name, region_id: createForm.regionId, imageFile: createForm.imageFile })
+    await wineAppellationsStore.create({
+      name,
+      region_id: createForm.regionId,
+      imageFile: createForm.imageFile,
+    })
     feedback.value = { type: 'success', message: 'Appellation added.' }
     closeDialog()
   } catch (error) {
@@ -89,7 +94,7 @@ defineExpose({ openDialog })
 <template>
   <Button @click="openDialog">Add Appellation</Button>
   <Dialog v-model:open="dialogOpen">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Add Appellation</DialogTitle>
       </DialogHeader>
@@ -114,6 +119,8 @@ defineExpose({ openDialog })
             </option>
           </select>
         </div>
+        <GrapeAppellationManager :appellationId="null" />
+
         <ImageUploader v-model="createForm.imageFile" label="Appellation Image (optional)" />
         <DialogFooter class="flex justify-end gap-2">
           <Button variant="outline" type="button" @click="closeDialog">Cancel</Button>

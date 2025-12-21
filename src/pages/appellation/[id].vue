@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
@@ -10,6 +10,11 @@ import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useGrapeAppellationsStore } from '@/stores/grapeAppellations'
 import AppellationOverview from '@/components/WineAppellations/AppellationOverview.vue'
 import AppellationDetailSections from '@/components/WineAppellations/AppellationDetailSections.vue'
+import { getVintageRatingsBySourceForTarget } from '@/services/vintageRatings'
+
+import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
+
+import type { VintageRatingsBySource } from '@/services/vintageRatings'
 
 defineOptions({
   name: 'AppellationDetailPage',
@@ -28,6 +33,7 @@ const { countries } = storeToRefs(wineCountriesStore)
 const { loading: grapeRulesLoadingMap } = storeToRefs(grapeAppellationsStore)
 
 const appellationId = route.params.id as string
+const vintageSources = ref<VintageRatingsBySource[]>([])
 
 const appellation = computed(() => appellations.value.find((a) => a.id === appellationId))
 const grapeRules = computed(() => grapeAppellationsStore.rulesForAppellation(appellationId))
@@ -59,6 +65,13 @@ onMounted(async () => {
     wineCountriesStore.loadAll(),
     grapeAppellationsStore.fetchForAppellation(appellationId),
   ])
+
+  const data = await getVintageRatingsBySourceForTarget({
+    appellation_id: appellation.value.id,
+    region_id: appellation.value.region_id,
+  })
+
+  vintageSources.value = data
 })
 </script>
 
@@ -93,6 +106,12 @@ onMounted(async () => {
         :grape-rules-loading="grapeRulesLoading"
         :appellation-name="appellation.name"
       />
+      <section v-if="vintageSources.length" class="mt-8 space-y-4">
+        <VintageRatingsTable
+          :data="vintageSources"
+          title="Vintage ratings"
+        />
+      </section>
     </div>
   </div>
 </template>

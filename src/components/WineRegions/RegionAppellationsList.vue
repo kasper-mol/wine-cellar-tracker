@@ -28,7 +28,7 @@ const emit = defineEmits<{ (e: 'select-appellation', id: string): void }>()
     >
       No appellations found for this region.
     </div>
-    <div v-else class="grid gap-6">
+    <div v-else class="grid grid-cols-2 gap-6">
       <Card
         v-for="appellation in appellations"
         :key="appellation.id"
@@ -36,7 +36,9 @@ const emit = defineEmits<{ (e: 'select-appellation', id: string): void }>()
         @click="emit('select-appellation', appellation.id)"
       >
         <div class="flex items-center justify-between">
-          <h3 class="font-serif text-2xl font-semibold text-card-foreground transition-colors group-hover:text-primary">
+          <h3
+            class="font-serif text-2xl font-semibold text-card-foreground transition-colors group-hover:text-primary"
+          >
             {{ appellation.name }}
           </h3>
           <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">

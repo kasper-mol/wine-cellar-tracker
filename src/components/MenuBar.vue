@@ -113,6 +113,17 @@ import { RouterLink } from 'vue-router'
             </span>
           </RouterLink>
         </MenubarItem>
+        <MenubarItem>
+          <RouterLink
+            v-slot="{ isActive }"
+            to="/manage/vintage-ratings"
+            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
+          >
+            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
+              Vintage ratings
+            </span>
+          </RouterLink>
+        </MenubarItem>
       </MenubarContent>
     </MenubarMenu>
   </Menubar>

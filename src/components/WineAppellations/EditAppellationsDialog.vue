@@ -96,7 +96,7 @@ defineExpose({ openDialog })
 
 <template>
   <Dialog v-model:open="dialogOpen">
-    <DialogContent>
+    <DialogContent class="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
       <DialogHeader>
         <DialogTitle>Edit Appellation</DialogTitle>
       </DialogHeader>

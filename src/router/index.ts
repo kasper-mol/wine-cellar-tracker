@@ -13,6 +13,8 @@ import WineAppellationsPage from '@/pages/manage/WineAppellationsPage.vue'
 import WineCountriesPage from '@/pages/manage/WineCountriesPage.vue'
 import WineRegionsPage from '@/pages/manage/WineRegionsPage.vue'
 import GrapeVarietiesPage from '@/pages/manage/GrapeVarietiesPage.vue'
+import VintageRatingsManage from '@/pages/manage/VintageRatingsManage.vue'
+import VintageRatingBatch from '@/pages/manage/VintageRatingBatch.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -84,6 +86,15 @@ const router = createRouter({
       path: '/manage/wine-appellations',
       name: 'wine-appellations',
       component: WineAppellationsPage,
+    },
+
+    {
+      path: '/manage/vintage-ratings',
+      component: VintageRatingsManage,
+    },
+    {
+      path: '/manage/vintage-ratings/batch',
+      component: VintageRatingBatch,
     },
   ],
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
@@ -9,6 +9,8 @@ import RegionAppellationsList from '@/components/WineRegions/RegionAppellationsL
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
+import { getVintageRatingsBySourceForTarget, type VintageRatingsBySource } from '@/services/vintageRatings'
 
 defineOptions({
   name: 'RegionDetailPage',
@@ -25,6 +27,7 @@ const { appellations } = storeToRefs(wineAppellationsStore)
 const { countries } = storeToRefs(wineCountriesStore)
 
 const regionId = route.params.id as string
+const vintageSources = ref<VintageRatingsBySource[]>([])
 
 const region = computed(() => regions.value.find((r) => r.id === regionId))
 
@@ -46,6 +49,12 @@ onMounted(async () => {
     wineAppellationsStore.loadAll(),
     wineCountriesStore.loadAll(),
   ])
+
+  if (region.value) {
+    vintageSources.value = await getVintageRatingsBySourceForTarget({
+      region_id: region.value.id,
+    })
+  }
 })
 
 function navigateToAppellation(appellationId: string) {
@@ -75,6 +84,10 @@ function navigateToAppellation(appellationId: string) {
         :country-name="country?.name ?? 'Unknown country'"
         :appellation-count="regionAppellations.length"
       />
+
+      <section v-if="vintageSources.length" class="mt-8 space-y-4">
+        <VintageRatingsTable :data="vintageSources" title="Vintage ratings" />
+      </section>
 
       <RegionAppellationsList
         :appellations="regionAppellations"
