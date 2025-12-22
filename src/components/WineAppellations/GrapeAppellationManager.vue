@@ -10,7 +10,7 @@ import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
 import { storeToRefs } from 'pinia'
 
 const props = defineProps<{
-  appellationId: string
+  appellationId: string | null
 }>()
 
 const wineGrapeVarietiesStore = useWineGrapeVarietiesStore()
@@ -61,6 +61,10 @@ async function addRule() {
   const error = validate()
   if (error) {
     feedback.value = error
+    return
+  }
+  if (!props.appellationId) {
+    feedback.value = 'Save the appellation before adding grape rules.'
     return
   }
 

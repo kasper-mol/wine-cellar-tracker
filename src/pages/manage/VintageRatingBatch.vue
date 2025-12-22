@@ -48,27 +48,30 @@ const rows = ref<
   {
     year: number
     rating: string
-    maturity: string | null
+    maturity: string
     structure_flags: string[]
     drink_from: number | null
     drink_until: number | null
-    description: string | null
+    description: string
   }[]
 >([])
 
 const canAddRows = computed(() => sourceId.value && (regionId.value || appellationId.value))
 
-function addYearRange(start: number, end: number) {
-  for (let year = start; year <= end; year++) {
+function addYearRange(start: number | null, end: number | null) {
+  if (start === null || end === null) return
+  const [begin, finish] = start <= end ? [start, end] : [end, start]
+
+  for (let year = begin; year <= finish; year++) {
     if (!rows.value.find((r) => r.year === year)) {
       rows.value.push({
         year,
         rating: '',
-        maturity: null,
+        maturity: '',
         structure_flags: [],
         drink_from: null,
         drink_until: null,
-        description: null,
+        description: '',
       })
     }
   }
@@ -89,11 +92,11 @@ async function saveAll() {
     rows: rows.value.map((r) => ({
       year: r.year,
       rating: r.rating,
-      maturity: r.maturity,
+      maturity: r.maturity.trim() || null,
       structure_flags: r.structure_flags,
       drink_from: r.drink_from,
       drink_until: r.drink_until,
-      description: r.description,
+      description: r.description.trim() || null,
     })),
   })
 

@@ -91,7 +91,7 @@ export async function fetchGrapeAppellationsByAppellation(appellationId: string)
     .order('grape_id', { ascending: true })
 
   throwIfError(error)
-  return (data ?? []) as GrapeAppellationRecord[]
+  return (data ?? []) as unknown as GrapeAppellationRecord[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export async function fetchGrapeAppellationsByGrape(grapeId: string) {
     .order('appellation_id')
 
   throwIfError(error)
-  return (data ?? []) as GrapeAppellationRecord[]
+  return (data ?? []) as unknown as GrapeAppellationRecord[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -129,7 +129,10 @@ export async function createGrapeAppellation(payload: CreateGrapeAppellationPayl
     .single()
 
   throwIfError(error)
-  return data as GrapeAppellationRecord
+  if (!data) {
+    throw new Error('Failed to create grape appellation')
+  }
+  return data as unknown as GrapeAppellationRecord
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -146,6 +149,10 @@ export async function updateGrapeAppellation(id: string, payload: UpdateGrapeApp
     .single()
 
   throwIfError(existing.error)
+
+  if (!existing.data) {
+    throw new Error('Grape appellation not found')
+  }
 
   const rule = payload.rule ?? existing.data.rule
   const min_pct = payload.min_pct !== undefined ? payload.min_pct : existing.data.min_pct
@@ -165,7 +172,10 @@ export async function updateGrapeAppellation(id: string, payload: UpdateGrapeApp
     .single()
 
   throwIfError(error)
-  return data as GrapeAppellationRecord
+  if (!data) {
+    throw new Error('Failed to update grape appellation')
+  }
+  return data as unknown as GrapeAppellationRecord
 }
 
 // ─────────────────────────────────────────────────────────────

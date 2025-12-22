@@ -99,10 +99,11 @@ function extractNumericScore(value: string | number | null | undefined) {
 
 function normalizeSources(items: VintageSourceInput[]): NormalizedSource[] {
   return items.map((item) => {
-    const id = 'source_id' in item ? item.source_id : item.source
+    const fromApi = 'source_id' in item
+    const id = fromApi ? item.source_id : item.source
     const name =
       ('source_name' in item && item.source_name) ||
-      (typeof item.source === 'string' ? item.source : id) ||
+      (!fromApi && typeof item.source === 'string' ? item.source : id) ||
       'Source'
 
     const ratings = item.ratings.map((rating) => {
@@ -130,12 +131,13 @@ const effectiveData = computed<NormalizedSource[]>(() =>
 const selectedSourceId = ref<string | null>(effectiveData.value[0]?.id ?? null)
 
 watch(effectiveData, (val) => {
-  if (!val.length) {
+  const first = val[0]
+  if (!first) {
     selectedSourceId.value = null
     return
   }
   if (!val.some((item) => item.id === selectedSourceId.value)) {
-    selectedSourceId.value = val[0].id
+    selectedSourceId.value = first.id
   }
 })
 

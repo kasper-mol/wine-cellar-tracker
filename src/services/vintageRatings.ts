@@ -209,10 +209,12 @@ export async function createVintageRatingsBatch(payload: CreateVintageRatingsBat
     appellation_id: payload.appellation_id ?? null,
   }))
 
-  const { data, error } = await client.from('vintage_ratings').insert(entries, {
-    onConflict: 'source_id,year,region_id,appellation_id',
-    ignoreDuplicates: true,
-  })
+  const { data, error } = await client
+    .from('vintage_ratings')
+    .upsert(entries, {
+      onConflict: 'source_id,year,region_id,appellation_id',
+      ignoreDuplicates: true,
+    })
 
   throwIfError(error)
   return data as VintageRatingRecord[] | null

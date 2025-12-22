@@ -66,9 +66,12 @@ onMounted(async () => {
     grapeAppellationsStore.fetchForAppellation(appellationId),
   ])
 
+  const currentAppellation = appellation.value
+  if (!currentAppellation) return
+
   const data = await getVintageRatingsBySourceForTarget({
-    appellation_id: appellation.value.id,
-    region_id: appellation.value.region_id,
+    appellation_id: currentAppellation.id,
+    region_id: currentAppellation.region_id,
   })
 
   vintageSources.value = data

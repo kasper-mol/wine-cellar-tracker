@@ -57,11 +57,11 @@ export const useGrapeAppellationsStore = defineStore('grapeAppellations', () => 
       throw new Error('Rule not found in store.')
     }
 
+    const appId = foundAppellationId as string
     const updated = await updateGrapeAppellation(id, payload)
 
-    rulesByAppellation.value[foundAppellationId] = rulesByAppellation.value[foundAppellationId].map(
-      (r) => (r.id === id ? updated : r),
-    )
+    const existing = rulesByAppellation.value[appId] ?? []
+    rulesByAppellation.value[appId] = existing.map((r) => (r.id === id ? updated : r))
   }
 
   async function remove(id: string) {
@@ -80,9 +80,9 @@ export const useGrapeAppellationsStore = defineStore('grapeAppellations', () => 
 
     await deleteGrapeAppellation(id)
 
-    rulesByAppellation.value[foundAppellationId] = rulesByAppellation.value[
-      foundAppellationId
-    ].filter((r) => r.id !== id)
+    const appId = foundAppellationId as string
+    const existing = rulesByAppellation.value[appId] ?? []
+    rulesByAppellation.value[appId] = existing.filter((r) => r.id !== id)
   }
 
   return {

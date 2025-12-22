@@ -53,17 +53,23 @@ export async function createWineRegion(payload: CreateWineRegionPayload) {
     .single()
   throwIfError(error)
 
+  if (!data) {
+    throw new Error('Failed to create wine region')
+  }
+
+  const created = data as unknown as WineRegionRecord
+
   if (!payload.imageFile) {
-    return data as unknown as WineRegionRecord
+    return created
   }
 
   const ext = payload.imageFile.name.split('.').pop() || 'jpg'
-  const filePath = `regions/${data.id}.${ext}`
+  const filePath = `regions/${created.id}.${ext}`
   const { error: uploadError } = await supabase.storage
     .from('region-images')
     .upload(filePath, payload.imageFile, { upsert: true })
   if (uploadError) {
-    await supabase.from('wine_regions').delete().eq('id', data.id)
+    await supabase.from('wine_regions').delete().eq('id', created.id)
     throw uploadError
   }
 
@@ -74,13 +80,13 @@ export async function createWineRegion(payload: CreateWineRegionPayload) {
   const { error: updateError } = await supabase
     .from('wine_regions')
     .update({ image_url: publicUrl })
-    .eq('id', data.id)
+    .eq('id', created.id)
   if (updateError) {
-    await supabase.from('wine_regions').delete().eq('id', data.id)
+    await supabase.from('wine_regions').delete().eq('id', created.id)
     throw updateError
   }
 
-  return { ...(data as WineRegionRecord), image_url: publicUrl }
+  return { ...created, image_url: publicUrl }
 }
 
 export async function updateWineRegion(id: string, payload: UpdateWineRegionPayload) {
@@ -111,7 +117,11 @@ export async function updateWineRegion(id: string, payload: UpdateWineRegionPayl
     .select('id, name, country_id, image_url, created_at, updated_at, country:wine_countries(*)')
     .single()
   throwIfError(error)
-  return data as unknown as WineRegionRecord
+  if (!data) {
+    throw new Error('Failed to update wine region')
+  }
+  const updated = data as unknown as WineRegionRecord
+  return updated
 }
 
 export async function deleteWineRegion(id: string) {

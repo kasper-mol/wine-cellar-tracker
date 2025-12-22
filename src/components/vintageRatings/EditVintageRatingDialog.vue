@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 
 import { useVintageRatingsStore } from '@/stores/vintageRatings'
+import type { RatingType } from '@/services/vintageRatings'
 
 const props = defineProps<{
   ratingId: string
@@ -40,12 +41,12 @@ const isDeleting = ref(false)
 
 const form = ref({
   rating: '',
-  rating_type: null as 'numeric' | 'grade' | 'range' | null,
-  maturity: null as string | null,
+  rating_type: '' as '' | RatingType,
+  maturity: '',
   structure_flags: [] as string[],
   drink_from: null as number | null,
   drink_until: null as number | null,
-  description: null as string | null,
+  description: '',
 })
 
 watch(
@@ -54,12 +55,12 @@ watch(
     if (!value) return
     form.value = {
       rating: value.rating,
-      rating_type: value.rating_type,
-      maturity: value.maturity,
+      rating_type: value.rating_type ?? '',
+      maturity: value.maturity ?? '',
       structure_flags: value.structure_flags ?? [],
       drink_from: value.drink_from,
       drink_until: value.drink_until,
-      description: value.description,
+      description: value.description ?? '',
     }
   },
   { immediate: true },
@@ -72,12 +73,12 @@ async function save() {
   try {
     await vintageRatingsStore.updateRating(rating.value.id, {
       rating: form.value.rating,
-      rating_type: form.value.rating_type,
-      maturity: form.value.maturity,
+      rating_type: form.value.rating_type || null,
+      maturity: form.value.maturity.trim() || null,
       structure_flags: form.value.structure_flags,
       drink_from: form.value.drink_from,
       drink_until: form.value.drink_until,
-      description: form.value.description,
+      description: form.value.description.trim() || null,
     })
 
     emit('close')

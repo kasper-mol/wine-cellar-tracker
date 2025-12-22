@@ -17,7 +17,7 @@ import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
 
-const props = defineProps<{ appellationId: string | undefined }>()
+const props = defineProps<{ appellationId: string | null | undefined }>()
 const emit = defineEmits<{
   (e: 'updated'): void
 }>()
@@ -138,7 +138,7 @@ defineExpose({ openDialog })
             />
           </div>
         </div>
-        <GrapeAppellationManager :appellationId="appellationId" />
+        <GrapeAppellationManager :appellationId="appellationId ?? null" />
 
         <DialogFooter>
           <Button type="button" variant="outline" @click="closeDialog">Cancel</Button>

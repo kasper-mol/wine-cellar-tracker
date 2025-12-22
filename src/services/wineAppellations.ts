@@ -107,17 +107,23 @@ export async function createWineAppellation(payload: CreateWineAppellationPayloa
 
   throwIfError(error)
 
+  if (!data) {
+    throw new Error('Failed to create wine appellation')
+  }
+
+  const created = data as unknown as WineAppellationRecord
+
   if (!payload.imageFile) {
-    return data as unknown as WineAppellationRecord
+    return created
   }
 
   const ext = payload.imageFile.name.split('.').pop() || 'jpg'
-  const filePath = `appellations/${data.id}.${ext}`
+  const filePath = `appellations/${created.id}.${ext}`
   const { error: uploadError } = await supabase.storage
     .from('appellation-images')
     .upload(filePath, payload.imageFile, { upsert: true })
   if (uploadError) {
-    await supabase.from('wine_appellations').delete().eq('id', data.id)
+    await supabase.from('wine_appellations').delete().eq('id', created.id)
     throw uploadError
   }
 
@@ -128,13 +134,13 @@ export async function createWineAppellation(payload: CreateWineAppellationPayloa
   const { error: updateError } = await supabase
     .from('wine_appellations')
     .update({ image_url: publicUrl })
-    .eq('id', data.id)
+    .eq('id', created.id)
   if (updateError) {
-    await supabase.from('wine_appellations').delete().eq('id', data.id)
+    await supabase.from('wine_appellations').delete().eq('id', created.id)
     throw updateError
   }
 
-  return { ...(data as WineAppellationRecord), image_url: publicUrl }
+  return { ...created, image_url: publicUrl }
 }
 
 export async function updateWineAppellation(id: string, payload: UpdateWineAppellationPayload) {
@@ -166,12 +172,16 @@ export async function updateWineAppellation(id: string, payload: UpdateWineAppel
           }
         : {}),
       ...(image_url ? { image_url } : {}),
-    })
+  })
     .eq('id', id)
     .select(SELECT_COLUMNS)
     .single()
   throwIfError(error)
-  return data as unknown as WineAppellationRecord
+  if (!data) {
+    throw new Error('Failed to update wine appellation')
+  }
+  const updated = data as unknown as WineAppellationRecord
+  return updated
 }
 
 export async function deleteWineAppellation(id: string) {
