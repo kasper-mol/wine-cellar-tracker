@@ -10,7 +10,7 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
-  base: '/cellar-tracker/',
+  base: '/wine-cellar-tracker/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
