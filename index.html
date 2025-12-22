@@ -1,12 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite App</title>
   </head>
   <body>
+    <script>
+      (function handlePagesRedirect() {
+        // GitHub Pages SPA fallback: decode paths like "?/app/path&param=1" back to /app/path?param=1
+        const base = '/wine-cellar-tracker/'
+        const search = window.location.search
+        if (!search.startsWith('?/')) return
+
+        const query = search.slice(2)
+        const parts = query.split('&')
+        const path = parts.shift() || ''
+        const newSearch = parts.length ? `?${parts.join('&')}` : ''
+        const newUrl = `${base}${path.replace(/^\\/+/, '')}${newSearch}${window.location.hash}`
+        window.history.replaceState(null, '', newUrl)
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
