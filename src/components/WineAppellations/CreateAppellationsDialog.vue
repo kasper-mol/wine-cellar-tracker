@@ -28,6 +28,7 @@ const dialogOpen = ref(false)
 const isCreating = ref(false)
 const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 const selectedCountryId = ref<string | null>(countries.value[0]?.id ?? null)
+const createdAppellationId = ref<string | null>(null)
 
 const createForm = reactive({
   name: '',
@@ -39,12 +40,22 @@ const regionsForCountry = computed(() =>
   regions.value.filter((r) => r.country_id === selectedCountryId.value),
 )
 
+const isCreated = computed(() => Boolean(createdAppellationId.value))
+
 watch(selectedCountryId, (val) => {
   const firstRegion = regions.value.find((r) => r.country_id === val)
   createForm.regionId = firstRegion?.id ?? ''
 })
 
 async function handleCreate() {
+  if (createdAppellationId.value) {
+    feedback.value = {
+      type: 'success',
+      message: 'Appellation already saved. Add grape rules below.',
+    }
+    return
+  }
+
   const name = createForm.name.trim()
   if (!name) {
     feedback.value = { type: 'error', message: 'Appellation name required.' }
@@ -59,13 +70,16 @@ async function handleCreate() {
   feedback.value = null
 
   try {
-    await wineAppellationsStore.create({
+    const created = await wineAppellationsStore.create({
       name,
       region_id: createForm.regionId,
       imageFile: createForm.imageFile,
     })
-    feedback.value = { type: 'success', message: 'Appellation added.' }
-    closeDialog()
+    createdAppellationId.value = created.id
+    feedback.value = {
+      type: 'success',
+      message: 'Appellation saved. You can now add grape rules below.',
+    }
   } catch (error) {
     feedback.value = {
       type: 'error',
@@ -86,6 +100,7 @@ function closeDialog() {
   createForm.imageFile = null
   selectedCountryId.value = countries.value[0]?.id ?? null
   feedback.value = null
+  createdAppellationId.value = null
 }
 
 defineExpose({ openDialog })
@@ -101,30 +116,32 @@ defineExpose({ openDialog })
       <form class="space-y-4" @submit.prevent="handleCreate">
         <div class="space-y-2">
           <Label>Name</Label>
-          <Input v-model="createForm.name" placeholder="e.g. Pauillac" />
+          <Input v-model="createForm.name" :disabled="isCreated" placeholder="e.g. Pauillac" />
         </div>
         <div class="space-y-2">
           <Label>Country</Label>
-          <select v-model="selectedCountryId" class="w-full border rounded p-2">
+          <select v-model="selectedCountryId" class="w-full border rounded p-2" :disabled="isCreated">
             <option value="" disabled>Select a country</option>
             <option v-for="c in countries" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
         </div>
         <div class="space-y-2">
           <Label>Region</Label>
-          <select v-model="createForm.regionId" class="w-full border rounded p-2">
+          <select v-model="createForm.regionId" class="w-full border rounded p-2" :disabled="isCreated">
             <option value="" disabled>Select a region</option>
             <option v-for="r in regionsForCountry" :key="r.id" :value="r.id">
               {{ r.name }}
             </option>
           </select>
         </div>
-        <GrapeAppellationManager :appellationId="null" />
+        <GrapeAppellationManager :appellationId="createdAppellationId" />
 
         <ImageUploader v-model="createForm.imageFile" label="Appellation Image (optional)" />
         <DialogFooter class="flex justify-end gap-2">
           <Button variant="outline" type="button" @click="closeDialog">Cancel</Button>
-          <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>
+          <Button type="submit" :disabled="isCreating || isCreated">
+            {{ isCreating ? 'Adding…' : isCreated ? 'Saved' : 'Add' }}
+          </Button>
         </DialogFooter>
         <p v-if="feedback" :class="feedback.type === 'error' ? 'text-red-500' : 'text-green-500'">
           {{ feedback.message }}

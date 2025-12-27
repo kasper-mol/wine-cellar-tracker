@@ -167,22 +167,7 @@ function navigateToAppellation(id: string) {
           class="group cursor-pointer overflow-hidden border-border bg-card p-0 transition-all hover:shadow-lg"
           @click="navigateToAppellation(appellation.id)"
         >
-          <div class="h-44 w-full overflow-hidden">
-            <img
-              v-if="appellation.image_url"
-              :src="appellation.image_url"
-              :alt="appellation.name + ' vineyards'"
-              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-            <div
-              v-else
-              class="flex h-full w-full items-center justify-center bg-muted text-xs uppercase tracking-widest text-muted-foreground"
-            >
-              No Image
-            </div>
-          </div>
-          <div class="p-8">
+          <div class="p-6">
             <div class="mb-4 flex items-start justify-between">
               <div>
                 <p class="text-sm uppercase tracking-wide text-muted-foreground">
@@ -193,9 +178,6 @@ function navigateToAppellation(id: string) {
                 >
                   {{ appellation.name }}
                 </h2>
-              </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Wine class="h-6 w-6 text-primary" />
               </div>
             </div>
 

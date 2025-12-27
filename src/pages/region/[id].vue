@@ -5,12 +5,14 @@ import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import RegionOverview from '@/components/WineRegions/RegionOverview.vue'
-import RegionAppellationsList from '@/components/WineRegions/RegionAppellationsList.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
-import { getVintageRatingsBySourceForTarget, type VintageRatingsBySource } from '@/services/vintageRatings'
+import {
+  getVintageRatingsBySourceForTarget,
+  type VintageRatingsBySource,
+} from '@/services/vintageRatings'
 
 defineOptions({
   name: 'RegionDetailPage',
@@ -68,7 +70,7 @@ function navigateToAppellation(appellationId: string) {
   </div>
 
   <div v-else class="min-h-screen">
-    <div class="container max-w-6xl space-y-12">
+    <div class="container space-y-4">
       <Button
         v-if="country"
         variant="ghost"
@@ -83,16 +85,13 @@ function navigateToAppellation(appellationId: string) {
         :region="region"
         :country-name="country?.name ?? 'Unknown country'"
         :appellation-count="regionAppellations.length"
+        :region-appellations="regionAppellations"
+        @select-appellation="navigateToAppellation"
       />
 
       <section v-if="vintageSources.length" class="mt-8 space-y-4">
         <VintageRatingsTable :data="vintageSources" title="Vintage ratings" />
       </section>
-
-      <RegionAppellationsList
-        :appellations="regionAppellations"
-        @select-appellation="navigateToAppellation"
-      />
     </div>
   </div>
 </template>

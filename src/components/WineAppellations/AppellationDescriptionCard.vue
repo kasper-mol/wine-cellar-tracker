@@ -12,7 +12,6 @@ const hasDescription = computed(() => trimmedDescription.value.length > 0)
 
 <template>
   <div>
-    <h2 class="mb-4 font-serif text-3xl font-semibold text-foreground">About this Appellation</h2>
     <Card class="border-border bg-card p-6 shadow-sm">
       <p
         v-if="hasDescription"

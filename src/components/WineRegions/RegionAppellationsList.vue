@@ -16,10 +16,8 @@ const emit = defineEmits<{ (e: 'select-appellation', id: string): void }>()
   <section>
     <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Regional catalog</p>
-        <h2 class="font-serif text-3xl font-semibold text-foreground">Appellations</h2>
+        <h3 class="font-serif text-2xl font-semibold text-foreground">Appellations</h3>
       </div>
-      <p class="text-sm text-muted-foreground">{{ appellations.length }} entries</p>
     </div>
 
     <div

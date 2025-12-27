@@ -9,7 +9,6 @@ import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useGrapeAppellationsStore } from '@/stores/grapeAppellations'
 import AppellationOverview from '@/components/WineAppellations/AppellationOverview.vue'
-import AppellationDetailSections from '@/components/WineAppellations/AppellationDetailSections.vue'
 import { getVintageRatingsBySourceForTarget } from '@/services/vintageRatings'
 
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
@@ -45,6 +44,8 @@ const region = computed(() => {
   const regionId = appellation.value.region_id
   return regions.value.find((r) => r.id === regionId)
 })
+
+const displayImage = computed(() => appellation.value?.image_url || region.value?.image_url || null)
 
 const countryName = computed(() => {
   const regionValue = region.value
@@ -84,7 +85,7 @@ onMounted(async () => {
   </div>
 
   <div v-else class="min-h-screen">
-    <div class="container max-w-6xl space-y-12">
+    <div class="container space-y-4">
       <Button
         v-if="region"
         variant="ghost"
@@ -97,23 +98,17 @@ onMounted(async () => {
 
       <AppellationOverview
         :name="appellation.name"
-        :image-url="appellation.image_url || null"
+        :image-url="displayImage"
         :region-name="region?.name ?? 'Unknown region'"
         :country-name="countryName"
         :grape-count="grapeCount"
-      />
-
-      <AppellationDetailSections
-        :description="appellationDescription"
         :grape-rules="grapeRules"
         :grape-rules-loading="grapeRulesLoading"
-        :appellation-name="appellation.name"
+        :appelation-description="appellationDescription"
       />
+
       <section v-if="vintageSources.length" class="mt-8 space-y-4">
-        <VintageRatingsTable
-          :data="vintageSources"
-          title="Vintage ratings"
-        />
+        <VintageRatingsTable :data="vintageSources" title="Vintage ratings" />
       </section>
     </div>
   </div>

@@ -10,7 +10,8 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
-  base: '/wine-cellar-tracker/',
+  // Allow overriding base path for GitHub Pages; defaults to root for local dev
+  base: process.env.BASE_PATH ?? '/',
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

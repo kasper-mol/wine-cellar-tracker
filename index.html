@@ -10,7 +10,8 @@
     <script>
       (function handlePagesRedirect() {
         // GitHub Pages SPA fallback: decode paths like "?/app/path&param=1" back to /app/path?param=1
-        const base = '/wine-cellar-tracker/'
+        const isPagesHost = location.hostname.endsWith('github.io')
+        const base = isPagesHost ? `/${location.pathname.split('/')[1] || ''}/` : '/'
         const search = window.location.search
         if (!search.startsWith('?/')) return
 
