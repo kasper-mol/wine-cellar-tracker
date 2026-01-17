@@ -34,6 +34,13 @@ import { RouterLink } from 'vue-router'
       >
         <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Appellations</span>
       </RouterLink>
+      <RouterLink
+        v-slot="{ isActive }"
+        to="/flavors"
+        class="rounded-md px-3 py-1.5 transition hover:bg-muted"
+      >
+        <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Flavors</span>
+      </RouterLink>
       <MenubarTrigger class="rounded-md px-3 py-1.5 transition hover:bg-muted">
         Manage
       </MenubarTrigger>
@@ -121,6 +128,17 @@ import { RouterLink } from 'vue-router'
           >
             <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
               Vintage ratings
+            </span>
+          </RouterLink>
+        </MenubarItem>
+        <MenubarItem>
+          <RouterLink
+            v-slot="{ isActive }"
+            to="/manage/flavor-descriptors"
+            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
+          >
+            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
+              Flavor descriptors
             </span>
           </RouterLink>
         </MenubarItem>

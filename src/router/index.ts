@@ -5,6 +5,7 @@ import SignUpPage from '@/pages/SignUpPage.vue'
 import CountriesPage from '@/pages/countries.vue'
 import RegionsPage from '@/pages/regions.vue'
 import AppellationsPage from '@/pages/appellations.vue'
+import FlavorsPage from '@/pages/flavors.vue'
 import CountryDetailPage from '@/pages/country/[id].vue'
 import RegionDetailPage from '@/pages/region/[id].vue'
 import AppellationDetailPage from '@/pages/appellation/[id].vue'
@@ -15,6 +16,7 @@ import WineRegionsPage from '@/pages/manage/WineRegionsPage.vue'
 import GrapeVarietiesPage from '@/pages/manage/GrapeVarietiesPage.vue'
 import VintageRatingsManage from '@/pages/manage/VintageRatingsManage.vue'
 import VintageRatingBatch from '@/pages/manage/VintageRatingBatch.vue'
+import FlavorDescriptorsPage from '@/pages/manage/FlavorDescriptorsPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,6 +45,11 @@ const router = createRouter({
       path: '/appellations',
       name: 'appellations',
       component: AppellationsPage,
+    },
+    {
+      path: '/flavors',
+      name: 'flavors',
+      component: FlavorsPage,
     },
     {
       path: '/country/:id',
@@ -95,6 +102,11 @@ const router = createRouter({
     {
       path: '/manage/vintage-ratings/batch',
       component: VintageRatingBatch,
+    },
+    {
+      path: '/manage/flavor-descriptors',
+      name: 'flavor-descriptors',
+      component: FlavorDescriptorsPage,
     },
   ],
 })
