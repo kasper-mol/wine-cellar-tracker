@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { Sparkles } from 'lucide-vue-next'
 
 import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
-import type { FlavorDescriptorRecord } from '@/services/flavorDescriptors'
+import type { FlavorDescriptorRecord } from '@/types/flavorDescriptors'
 import FlavorLevelGroup from '@/components/FlavorDescriptors/FlavorLevelGroup.vue'
 
 defineOptions({

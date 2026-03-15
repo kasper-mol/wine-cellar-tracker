@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import type { FlavorDescriptorRecord } from '@/services/flavorDescriptors'
+import type { FlavorDescriptorRecord } from '@/types/flavorDescriptors'
 
 const props = defineProps<{
   title: string

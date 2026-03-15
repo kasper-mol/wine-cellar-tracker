@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 
-import type { VintageRatingsBySource } from '@/services/vintageRatings'
+import type { VintageRatingsBySource } from '@/types/vintageRatings'
 
 const props = defineProps<{
   sources: VintageRatingsBySource[]

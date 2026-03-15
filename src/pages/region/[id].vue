@@ -9,10 +9,8 @@ import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
-import {
-  getVintageRatingsBySourceForTarget,
-  type VintageRatingsBySource,
-} from '@/services/vintageRatings'
+import { getVintageRatingsBySourceForTarget } from '@/services/vintageRatings'
+import type { VintageRatingsBySource } from '@/types/vintageRatings'
 
 defineOptions({
   name: 'RegionDetailPage',

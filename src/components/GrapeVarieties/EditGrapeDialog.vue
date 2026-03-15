@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploader from '@/components/ImageUploader.vue'
-import type { GrapeColor } from '@/services/grapeVarieties'
+import type { GrapeColor } from '@/types/grapeVarieties'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
 
 const props = defineProps<{ grapeId: string | null }>()

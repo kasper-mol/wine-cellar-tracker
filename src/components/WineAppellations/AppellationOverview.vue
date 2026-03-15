@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MapViewer from '@/components/MapViewer.vue'
 import GrapeCompositionSection from '@/components/WineAppellations/GrapeCompositionSection.vue'
-import type { GrapeAppellationRecord } from '@/services/grapeAppellations'
+import type { GrapeAppellationRecord } from '@/types/grapeAppellations'
 import AppellationDescriptionCard from './AppellationDescriptionCard.vue'
 
 defineProps<{

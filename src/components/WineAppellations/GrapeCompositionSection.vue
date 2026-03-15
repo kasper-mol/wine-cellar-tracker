@@ -2,7 +2,7 @@
 import type { BadgeVariants } from '@/components/ui/badge'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import type { GrapeAppellationRecord, GrapeRuleType } from '@/services/grapeAppellations'
+import type { GrapeAppellationRecord, GrapeRuleType } from '@/types/grapeAppellations'
 
 const props = defineProps<{
   rules: GrapeAppellationRecord[]
@@ -58,15 +58,18 @@ function formatPercentage(value: number | null | undefined) {
               {{ rule.grape?.name ?? 'Unnamed Grape' }}
             </h3>
             <p class="text-sm text-muted-foreground">
-              {{ grapeRuleMeta[rule.rule].description }}
+              {{ grapeRuleMeta[rule.rule]?.description ?? '' }}
             </p>
           </div>
-          <Badge :variant="grapeRuleMeta[rule.rule].badge">
-            {{ grapeRuleMeta[rule.rule].label }}
+          <Badge :variant="grapeRuleMeta[rule.rule]?.badge">
+            {{ grapeRuleMeta[rule.rule]?.label ?? '' }}
           </Badge>
         </div>
 
-        <div v-if="rule.rule !== 'forbidden'" class="mt-4 grid gap-4 text-sm text-muted-foreground sm:grid-cols-2">
+        <div
+          v-if="rule.rule !== 'forbidden'"
+          class="mt-4 grid gap-4 text-sm text-muted-foreground sm:grid-cols-2"
+        >
           <div class="rounded border border-dashed border-border/60 p-3">
             <p class="text-xs uppercase tracking-wide">Min Percentage</p>
             <p class="text-lg font-semibold text-card-foreground">

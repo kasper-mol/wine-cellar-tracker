@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { getSupabaseClient } from '@/lib/supabase'
-import type { UserRecord } from '@/services/users'
+import type { UserRecord } from '@/types/users'
 import { fetchUsers, updateUser } from '@/services/users'
 
 const supabaseReady = ref(false)
@@ -38,7 +38,7 @@ const form = reactive({
 })
 
 const selectedUser = computed(
-  () => users.value.find((candidate) => candidate.id === selectedUserId.value) ?? null,
+  () => users.value.find((candidate: UserRecord) => candidate.id === selectedUserId.value) ?? null,
 )
 
 watch(

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 
 import { useVintageRatingsStore } from '@/stores/vintageRatings'
-import type { RatingType } from '@/services/vintageRatings'
+import type { RatingType } from '@/types/vintageRatings'
 
 const props = defineProps<{
   ratingId: string
@@ -168,11 +168,7 @@ async function remove() {
 
       <DialogFooter>
         <div class="flex w-full items-center justify-between">
-          <Button
-            variant="destructive"
-            :disabled="isDeleting"
-            @click="remove"
-          >
+          <Button variant="destructive" :disabled="isDeleting" @click="remove">
             {{ isDeleting ? 'Deleting…' : 'Delete' }}
           </Button>
 

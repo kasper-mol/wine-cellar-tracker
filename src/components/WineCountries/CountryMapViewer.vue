@@ -164,7 +164,7 @@ function applyMapStyles() {
 
     regionLayerMap.set(label, layer)
 
-    const fill = mapConfig.value?.regionColors?.[label] ?? mapConfig.value.defaultFill
+    const fill = mapConfig.value?.regionColors?.[label] ?? mapConfig.value?.defaultFill ?? '#e9b3b3'
     layer.querySelectorAll('path, polygon, rect, circle, ellipse').forEach((shape) => {
       const element = shape as HTMLElement
       element.style.fill = fill

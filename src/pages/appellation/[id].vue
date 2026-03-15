@@ -13,7 +13,7 @@ import { getVintageRatingsBySourceForTarget } from '@/services/vintageRatings'
 
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
 
-import type { VintageRatingsBySource } from '@/services/vintageRatings'
+import type { VintageRatingsBySource } from '@/types/vintageRatings'
 
 defineOptions({
   name: 'AppellationDetailPage',

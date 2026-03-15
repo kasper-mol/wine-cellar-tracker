@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import type { VintageRatingsBySource } from '@/services/vintageRatings'
+import type { VintageRatingsBySource } from '@/types/vintageRatings'
 
 type VintageRatingInput = {
   year: number
@@ -293,7 +293,9 @@ function getScoreColor(score: number | null | undefined): string {
               >
                 {{ flag }}
               </span>
-              <span v-if="!rating.structureFlags.length" class="text-sm text-muted-foreground">—</span>
+              <span v-if="!rating.structureFlags.length" class="text-sm text-muted-foreground"
+                >—</span
+              >
             </div>
 
             <!-- Maturity -->

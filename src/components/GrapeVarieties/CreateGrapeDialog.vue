@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { GrapeColor } from '@/services/grapeVarieties'
+import type { GrapeColor } from '@/types/grapeVarieties'
 import ImageUploader from '../ImageUploader.vue'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
 
