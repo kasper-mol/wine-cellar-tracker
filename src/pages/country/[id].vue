@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import CountryOverview from '@/components/WineCountries/CountryOverview.vue'
+import CountryMapViewer from '@/components/WineCountries/CountryMapViewer.vue'
 import CountryRegionsList from '@/components/WineCountries/CountryRegionsList.vue'
 import CountryAppellationsList from '@/components/WineCountries/CountryAppellationsList.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
@@ -93,6 +94,8 @@ function navigateToAppellation(appellationId: string) {
         :region-count="countryRegions.length"
         :appellation-count="countryAppellations.length"
       />
+
+      <CountryMapViewer :country-name="country.name" />
 
       <CountryRegionsList :regions="countryRegions" @select-region="navigateToRegion" />
 
