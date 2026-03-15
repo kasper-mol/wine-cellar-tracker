@@ -2,9 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type {
   GrapeVarietyRecord,
-  CreateGrapeVarietyPayload,
-  UpdateGrapeVarietyPayload,
-} from '@/services/grapeVarieties'
+  GrapeVarietyCreatePayload,
+  GrapeVarietyUpdatePayload,
+} from '@/types/grapeVarieties'
 import {
   fetchGrapeVarieties,
   createGrapeVariety,
@@ -25,13 +25,13 @@ export const useWineGrapeVarietiesStore = defineStore('wineGrapeVarietiesStore',
     return grapeVarieties.value
   }
 
-  async function create(payload: CreateGrapeVarietyPayload) {
+  async function create(payload: GrapeVarietyCreatePayload) {
     const grape = await createGrapeVariety(payload)
     grapeVarieties.value = sortByName([...grapeVarieties.value, grape])
     return grape
   }
 
-  async function update(id: string, payload: UpdateGrapeVarietyPayload) {
+  async function update(id: string, payload: GrapeVarietyUpdatePayload) {
     const updated = await updateGrapeVariety(id, payload)
     grapeVarieties.value = sortByName(
       grapeVarieties.value.map((g) => (g.id === updated.id ? updated : g)),

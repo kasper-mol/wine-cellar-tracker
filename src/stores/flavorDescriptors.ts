@@ -2,14 +2,16 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   fetchFlavorDescriptors,
-  type FlavorDescriptorRecord,
-  type FlavorLevel,
-  type CreateFlavorDescriptorPayload,
-  type UpdateFlavorDescriptorPayload,
   createFlavorDescriptor,
   updateFlavorDescriptor,
   deleteFlavorDescriptor,
 } from '@/services/flavorDescriptors'
+import type {
+  FlavorDescriptorCreatePayload,
+  FlavorDescriptorUpdatePayload,
+  FlavorDescriptorRecord,
+  FlavorLevel,
+} from '@/types/flavorDescriptors'
 
 export const useFlavorDescriptorsStore = defineStore('flavorDescriptors', () => {
   const descriptors = ref<FlavorDescriptorRecord[]>([])
@@ -26,7 +28,7 @@ export const useFlavorDescriptorsStore = defineStore('flavorDescriptors', () => 
     }
   }
 
-  async function add(payload: CreateFlavorDescriptorPayload) {
+  async function add(payload: FlavorDescriptorCreatePayload) {
     const created = await createFlavorDescriptor({
       name: payload.name.trim(),
       level: payload.level,
@@ -36,13 +38,11 @@ export const useFlavorDescriptorsStore = defineStore('flavorDescriptors', () => 
     return created
   }
 
-  async function update(id: string, payload: UpdateFlavorDescriptorPayload) {
+  async function update(id: string, payload: FlavorDescriptorUpdatePayload) {
     const updated = await updateFlavorDescriptor(id, {
       ...payload,
       ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
-      ...(payload.category !== undefined
-        ? { category: payload.category?.trim() || null }
-        : {}),
+      ...(payload.category !== undefined ? { category: payload.category?.trim() || null } : {}),
     })
     descriptors.value = descriptors.value.map((descriptor) =>
       descriptor.id === updated.id ? updated : descriptor,

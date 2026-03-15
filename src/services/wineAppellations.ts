@@ -1,46 +1,10 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
-
-import type { WineRegionRecord } from '@/services/wineRegions'
-import type { GrapeVarietyRecord } from '@/services/grapeVarieties'
-
-export interface GrapeAppellationRule {
-  id: string
-  appellation_id: string
-  grape_id: string
-  rule: 'allowed' | 'required' | 'forbidden'
-  min_pct: number | null
-  max_pct: number | null
-  created_at: string
-  updated_at: string
-  grape?: GrapeVarietyRecord | null
-}
-
-export interface WineAppellationRecord {
-  id: string
-  name: string
-  region_id: string
-  description: string | null
-  image_url: string | null
-  created_at: string
-  updated_at: string
-  region?: WineRegionRecord | null
-  grapes?: GrapeAppellationRule[] | null
-}
-
-export interface CreateWineAppellationPayload {
-  name: string
-  region_id: string
-  description?: string | null
-  imageFile?: File | null
-}
-
-export interface UpdateWineAppellationPayload {
-  name?: string
-  region_id?: string
-  description?: string | null
-  imageFile?: File | null
-}
+import type {
+  WineAppellationCreatePayload,
+  WineAppellationUpdatePayload,
+  WineAppellationRecord,
+} from '@/types/wineAppellations'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) {
@@ -88,7 +52,7 @@ export async function fetchWineAppellations() {
   return (data ?? []) as unknown as WineAppellationRecord[]
 }
 
-export async function createWineAppellation(payload: CreateWineAppellationPayload) {
+export async function createWineAppellation(payload: WineAppellationCreatePayload) {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
     .from('wine_appellations')
@@ -143,7 +107,7 @@ export async function createWineAppellation(payload: CreateWineAppellationPayloa
   return { ...created, image_url: publicUrl }
 }
 
-export async function updateWineAppellation(id: string, payload: UpdateWineAppellationPayload) {
+export async function updateWineAppellation(id: string, payload: WineAppellationUpdatePayload) {
   const supabase = getSupabaseClient()
   let image_url: string | null = null
 
@@ -167,12 +131,11 @@ export async function updateWineAppellation(id: string, payload: UpdateWineAppel
       ...(payload.region_id !== undefined ? { region_id: payload.region_id } : {}),
       ...(payload.description !== undefined
         ? {
-            description:
-              payload.description === null ? null : payload.description.trim() || null,
+            description: payload.description === null ? null : payload.description.trim() || null,
           }
         : {}),
       ...(image_url ? { image_url } : {}),
-  })
+    })
     .eq('id', id)
     .select(SELECT_COLUMNS)
     .single()

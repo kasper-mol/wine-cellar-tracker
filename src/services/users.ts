@@ -2,27 +2,7 @@ import type { PostgrestError } from '@supabase/supabase-js'
 
 import { hashPassword } from '@/lib/crypto'
 import { getSupabaseClient } from '@/lib/supabase'
-
-export interface UserRecord {
-  id: string
-  email: string
-  password_hash: string
-  display_name: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface CreateUserPayload {
-  email: string
-  password: string
-  displayName?: string | null
-}
-
-export interface UpdateUserPayload {
-  email?: string
-  displayName?: string | null
-  password?: string
-}
+import type { UserCreatePayload, UserRecord, UserUpdatePayload } from '@/types/users'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) {
@@ -40,7 +20,7 @@ export async function fetchUsers() {
   return (data ?? []) as UserRecord[]
 }
 
-export async function createUser(payload: CreateUserPayload) {
+export async function createUser(payload: UserCreatePayload) {
   const client = getSupabaseClient()
   const hashedPassword = await hashPassword(payload.password)
   const sanitizedEmail = payload.email.trim().toLowerCase()
@@ -60,7 +40,7 @@ export async function createUser(payload: CreateUserPayload) {
   return data as UserRecord
 }
 
-export async function updateUser(id: string, payload: UpdateUserPayload) {
+export async function updateUser(id: string, payload: UserUpdatePayload) {
   const client = getSupabaseClient()
 
   const updateBody: Record<string, string | null> = {

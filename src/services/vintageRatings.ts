@@ -1,94 +1,17 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
-
-export type RatingType = 'numeric' | 'grade' | 'range'
-
-export interface MergedVintageRating {
-  year: number
-  rating: string
-  rating_type: 'numeric' | 'grade' | 'range' | null
-  maturity: string | null
-  structure_flags: string[] | null
-  drink_from: number | null
-  drink_until: number | null
-  description: string | null
-  fallback: boolean
-}
-
-export interface VintageRatingsBySource {
-  source_id: string
-  source_name: string
-  ratings: MergedVintageRating[]
-}
-
-export interface VintageRatingSourceRecord {
-  id: string
-  name: string
-  url: string | null
-  description: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface VintageRatingRecord {
-  id: string
-  source_id: string
-  year: number
-  rating: string
-  rating_type: RatingType | null
-  maturity: string | null
-  structure_flags: string[] | null
-  drink_from: number | null
-  drink_until: number | null
-  description: string | null
-  region_id: string | null
-  appellation_id: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface CreateVintageRatingSourcePayload {
-  name: string
-  url?: string | null
-  description?: string | null
-}
-
-export interface UpdateVintageRatingSourcePayload
-  extends Partial<CreateVintageRatingSourcePayload> {}
-
-export interface CreateVintageRatingPayload {
-  source_id: string
-  year: number
-  rating: string
-  rating_type?: RatingType | null
-  maturity?: string | null
-  structure_flags?: string[] | null
-  drink_from?: number | null
-  drink_until?: number | null
-  description?: string | null
-  region_id?: string | null
-  appellation_id?: string | null
-}
-
-export interface UpdateVintageRatingPayload extends Partial<CreateVintageRatingPayload> {}
-
-export interface VintageRatingRowInput {
-  year: number
-  rating: string
-  rating_type?: RatingType | null
-  maturity?: string | null
-  structure_flags?: string[] | null
-  drink_from?: number | null
-  drink_until?: number | null
-  description?: string | null
-}
-
-export interface CreateVintageRatingsBatchPayload {
-  source_id: string
-  region_id?: string | null
-  appellation_id?: string | null
-  rows: VintageRatingRowInput[]
-}
+import type {
+  VintageRatingCreatePayload,
+  VintageRatingsBatchCreatePayload,
+  VintageRatingSourceCreatePayload,
+  MergedVintageRating,
+  VintageRatingUpdatePayload,
+  VintageRatingSourceUpdatePayload,
+  VintageRatingRecord,
+  VintageRatingRowInput,
+  VintageRatingsBySource,
+  VintageRatingSourceRecord,
+} from '@/types/vintageRatings'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) throw new Error(error.message)
@@ -105,7 +28,7 @@ export async function listVintageRatingSources() {
   return data as VintageRatingSourceRecord[]
 }
 
-export async function createVintageRatingSource(payload: CreateVintageRatingSourcePayload) {
+export async function createVintageRatingSource(payload: VintageRatingSourceCreatePayload) {
   const client = getSupabaseClient()
 
   const { data, error } = await client
@@ -120,7 +43,7 @@ export async function createVintageRatingSource(payload: CreateVintageRatingSour
 
 export async function updateVintageRatingSource(
   id: string,
-  payload: UpdateVintageRatingSourcePayload,
+  payload: VintageRatingSourceUpdatePayload,
 ) {
   const client = getSupabaseClient()
 
@@ -166,7 +89,7 @@ export async function listVintageRatings(params?: {
   return data as VintageRatingRecord[]
 }
 
-export async function createVintageRating(payload: CreateVintageRatingPayload) {
+export async function createVintageRating(payload: VintageRatingCreatePayload) {
   const client = getSupabaseClient()
 
   const { data, error } = await client.from('vintage_ratings').insert(payload).select().single()
@@ -175,7 +98,7 @@ export async function createVintageRating(payload: CreateVintageRatingPayload) {
   return data as VintageRatingRecord
 }
 
-export async function updateVintageRating(id: string, payload: UpdateVintageRatingPayload) {
+export async function updateVintageRating(id: string, payload: VintageRatingUpdatePayload) {
   const client = getSupabaseClient()
 
   const { data, error } = await client
@@ -199,7 +122,7 @@ export async function deleteVintageRating(id: string) {
 
 /* -------------------------- BATCH CREATE --------------------------- */
 
-export async function createVintageRatingsBatch(payload: CreateVintageRatingsBatchPayload) {
+export async function createVintageRatingsBatch(payload: VintageRatingsBatchCreatePayload) {
   const client = getSupabaseClient()
 
   const entries = payload.rows.map((row) => ({
@@ -209,12 +132,10 @@ export async function createVintageRatingsBatch(payload: CreateVintageRatingsBat
     appellation_id: payload.appellation_id ?? null,
   }))
 
-  const { data, error } = await client
-    .from('vintage_ratings')
-    .upsert(entries, {
-      onConflict: 'source_id,year,region_id,appellation_id',
-      ignoreDuplicates: true,
-    })
+  const { data, error } = await client.from('vintage_ratings').upsert(entries, {
+    onConflict: 'source_id,year,region_id,appellation_id',
+    ignoreDuplicates: true,
+  })
 
   throwIfError(error)
   return data as VintageRatingRecord[] | null

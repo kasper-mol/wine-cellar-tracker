@@ -1,29 +1,11 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 
 import { getSupabaseClient } from '@/lib/supabase'
-import type { WineCountryRecord } from '@/services/wineCountries'
-
-export interface WineRegionRecord {
-  id: string
-  name: string
-  country_id: string
-  image_url: string | null
-  created_at: string
-  updated_at: string
-  country?: WineCountryRecord | null
-}
-
-export interface CreateWineRegionPayload {
-  name: string
-  country_id: string
-  imageFile?: File | null
-}
-
-export interface UpdateWineRegionPayload {
-  name?: string
-  country_id?: string
-  imageFile?: File | null
-}
+import type {
+  WineRegionCreatePayload,
+  WineRegionUpdatePayload,
+  WineRegionRecord,
+} from '@/types/wineRegions'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) {
@@ -41,7 +23,7 @@ export async function fetchWineRegions() {
   return (data ?? []) as unknown as WineRegionRecord[]
 }
 
-export async function createWineRegion(payload: CreateWineRegionPayload) {
+export async function createWineRegion(payload: WineRegionCreatePayload) {
   const supabase = getSupabaseClient()
   const { data, error } = await supabase
     .from('wine_regions')
@@ -89,7 +71,7 @@ export async function createWineRegion(payload: CreateWineRegionPayload) {
   return { ...created, image_url: publicUrl }
 }
 
-export async function updateWineRegion(id: string, payload: UpdateWineRegionPayload) {
+export async function updateWineRegion(id: string, payload: WineRegionUpdatePayload) {
   const supabase = getSupabaseClient()
   let image_url: string | null = null
 

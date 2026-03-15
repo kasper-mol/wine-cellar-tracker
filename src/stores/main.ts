@@ -1,21 +1,5 @@
 import { defineStore } from 'pinia'
-
-export type WineStyle = 'red' | 'white' | 'rosé' | 'sparkling' | 'dessert'
-
-export interface UserWine {
-  id: string
-  name: string
-  producer: string
-  varietal: string
-  region: string
-  country: string
-  vintage: number
-  style: WineStyle
-  quantity: number
-  rating: number
-  readyToDrink: string
-  purchasePrice: number
-}
+import type { UserWine } from '@/types/wines'
 
 export interface MainState {
   userWines: UserWine[]

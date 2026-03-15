@@ -2,9 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type {
   WineRegionRecord,
-  CreateWineRegionPayload,
-  UpdateWineRegionPayload,
-} from '@/services/wineRegions'
+  WineRegionCreatePayload,
+  WineRegionUpdatePayload,
+} from '@/types/wineRegions'
 import {
   fetchWineRegions,
   createWineRegion,
@@ -25,13 +25,13 @@ export const useWineRegionsStore = defineStore('wineRegionsStore', () => {
     return regions.value
   }
 
-  async function create(payload: CreateWineRegionPayload) {
+  async function create(payload: WineRegionCreatePayload) {
     const region = await createWineRegion(payload)
     regions.value = sortByName([...regions.value, region])
     return region
   }
 
-  async function update(id: string, payload: UpdateWineRegionPayload) {
+  async function update(id: string, payload: WineRegionUpdatePayload) {
     const updated = await updateWineRegion(id, payload)
     regions.value = sortByName(regions.value.map((r) => (r.id === updated.id ? updated : r)))
     return updated

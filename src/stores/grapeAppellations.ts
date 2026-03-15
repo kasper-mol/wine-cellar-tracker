@@ -8,7 +8,11 @@ import {
   fetchGrapeAppellationsByAppellation,
 } from '@/services/grapeAppellations'
 
-import type { GrapeAppellationRecord } from '@/services/grapeAppellations'
+import type {
+  GrapeAppellationCreatePayload,
+  GrapeAppellationRecord,
+  GrapeAppellationUpdatePayload,
+} from '@/types/grapeAppellations'
 
 export const useGrapeAppellationsStore = defineStore('grapeAppellations', () => {
   const rulesByAppellation = ref<Record<string, GrapeAppellationRecord[]>>({})
@@ -30,20 +34,14 @@ export const useGrapeAppellationsStore = defineStore('grapeAppellations', () => 
     }
   }
 
-  async function create(payload: {
-    appellation_id: string
-    grape_id: string
-    rule: 'allowed' | 'required' | 'forbidden'
-    min_pct?: number | null
-    max_pct?: number | null
-  }) {
+  async function create(payload: GrapeAppellationCreatePayload) {
     const rule = await createGrapeAppellation(payload)
     const list = rulesByAppellation.value[payload.appellation_id] ?? []
     rulesByAppellation.value[payload.appellation_id] = [...list, rule]
     return rule
   }
 
-  async function update(id: string, payload: any) {
+  async function update(id: string, payload: GrapeAppellationUpdatePayload) {
     let foundAppellationId: string | null = null
 
     for (const [appId, list] of Object.entries(rulesByAppellation.value)) {

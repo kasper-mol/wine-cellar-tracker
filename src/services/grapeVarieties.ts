@@ -1,31 +1,10 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
-
-export type GrapeColor = 'red' | 'white' | 'rose'
-
-export interface GrapeVarietyRecord {
-  id: string
-  name: string
-  color: GrapeColor | null
-  description: string | null
-  created_at: string
-  updated_at: string
-  image_url: string | null
-}
-
-export interface CreateGrapeVarietyPayload {
-  name: string
-  color?: GrapeColor | null
-  description?: string | null
-  imageFile?: File | null
-}
-
-export interface UpdateGrapeVarietyPayload {
-  name?: string
-  color?: GrapeColor | null
-  description?: string | null
-  imageFile?: File | null
-}
+import type {
+  GrapeVarietyCreatePayload,
+  GrapeVarietyRecord,
+  GrapeVarietyUpdatePayload,
+} from '@/types/grapeVarieties'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) throw new Error(error?.message)
@@ -38,7 +17,7 @@ export async function fetchGrapeVarieties() {
   return (data ?? []) as GrapeVarietyRecord[]
 }
 
-export async function createGrapeVariety(payload: CreateGrapeVarietyPayload) {
+export async function createGrapeVariety(payload: GrapeVarietyCreatePayload) {
   const supabase = getSupabaseClient()
   const { data: created, error } = await supabase
     .from('grape_varieties')
@@ -79,7 +58,7 @@ export async function createGrapeVariety(payload: CreateGrapeVarietyPayload) {
   return { ...created, image_url: null } as GrapeVarietyRecord
 }
 
-export async function updateGrapeVariety(id: string, payload: UpdateGrapeVarietyPayload) {
+export async function updateGrapeVariety(id: string, payload: GrapeVarietyUpdatePayload) {
   const supabase = getSupabaseClient()
   let image_url: string | null = null
 

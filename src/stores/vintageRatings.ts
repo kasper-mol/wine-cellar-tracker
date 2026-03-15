@@ -9,12 +9,14 @@ import {
   updateVintageRating,
   deleteVintageRating,
   createVintageRatingsBatch,
-  type VintageRatingSourceRecord,
-  type VintageRatingRecord,
-  type CreateVintageRatingPayload,
-  type UpdateVintageRatingPayload,
-  type CreateVintageRatingsBatchPayload,
 } from '@/services/vintageRatings'
+import type {
+  VintageRatingSourceRecord,
+  VintageRatingRecord,
+  VintageRatingCreatePayload,
+  VintageRatingUpdatePayload,
+  VintageRatingsBatchCreatePayload,
+} from '@/types/vintageRatings'
 
 export const useVintageRatingsStore = defineStore('vintageRatings', {
   state: () => ({
@@ -72,13 +74,13 @@ export const useVintageRatingsStore = defineStore('vintageRatings', {
       }
     },
 
-    async addRating(payload: CreateVintageRatingPayload) {
+    async addRating(payload: VintageRatingCreatePayload) {
       const rating = await createVintageRating(payload)
       this.ratings.push(rating)
       return rating
     },
 
-    async updateRating(id: string, payload: UpdateVintageRatingPayload) {
+    async updateRating(id: string, payload: VintageRatingUpdatePayload) {
       const updated = await updateVintageRating(id, payload)
       const index = this.ratings.findIndex((r) => r.id === id)
       if (index !== -1) this.ratings[index] = updated
@@ -92,7 +94,7 @@ export const useVintageRatingsStore = defineStore('vintageRatings', {
 
     /* -------------------------- BATCH CREATE --------------------------- */
 
-    async addRatingsBatch(payload: CreateVintageRatingsBatchPayload) {
+    async addRatingsBatch(payload: VintageRatingsBatchCreatePayload) {
       const inserted = await createVintageRatingsBatch(payload)
 
       if (inserted?.length) {

@@ -1,19 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 
 import { getSupabaseClient } from '@/lib/supabase'
-import type { UserWine } from '@/stores/main'
-
-export type WineRecord = UserWine & {
-  created_at?: string
-  updated_at?: string
-  user_id?: string | null
-}
-
-export interface CreateWinePayload extends Omit<UserWine, 'id'> {
-  user_id?: string
-}
-
-export type UpdateWinePayload = Partial<Omit<UserWine, 'id'>>
+import type { WineCreatePayload, WineRecord, WineUpdatePayload } from '@/types/wines'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) {
@@ -28,7 +16,7 @@ export async function fetchWines() {
   return (data ?? []) as WineRecord[]
 }
 
-export async function createWine(payload: CreateWinePayload) {
+export async function createWine(payload: WineCreatePayload) {
   const client = getSupabaseClient()
   const { data, error } = await client.from('wines').insert(payload).select().single()
 
@@ -36,7 +24,7 @@ export async function createWine(payload: CreateWinePayload) {
   return data as WineRecord
 }
 
-export async function updateWine(id: string, payload: UpdateWinePayload) {
+export async function updateWine(id: string, payload: WineUpdatePayload) {
   const client = getSupabaseClient()
   const { data, error } = await client.from('wines').update(payload).eq('id', id).select().single()
 

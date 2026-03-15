@@ -1,34 +1,11 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
-import type { GrapeVarietyRecord } from '@/services/grapeVarieties'
-
-export type GrapeRuleType = 'allowed' | 'required' | 'forbidden'
-
-export interface GrapeAppellationRecord {
-  id: string
-  appellation_id: string
-  grape_id: string
-  rule: GrapeRuleType
-  min_pct: number | null
-  max_pct: number | null
-  created_at: string
-  updated_at: string
-  grape?: GrapeVarietyRecord | null
-}
-
-export interface CreateGrapeAppellationPayload {
-  appellation_id: string
-  grape_id: string
-  rule: GrapeRuleType
-  min_pct?: number | null
-  max_pct?: number | null
-}
-
-export interface UpdateGrapeAppellationPayload {
-  rule?: GrapeRuleType
-  min_pct?: number | null
-  max_pct?: number | null
-}
+import type {
+  GrapeAppellationCreatePayload,
+  GrapeAppellationRecord,
+  GrapeRuleType,
+  GrapeAppellationUpdatePayload,
+} from '@/types/grapeAppellations'
 
 function throwIfError(error: PostgrestError | null) {
   if (error) {
@@ -112,7 +89,7 @@ export async function fetchGrapeAppellationsByGrape(grapeId: string) {
 // ─────────────────────────────────────────────────────────────
 // Create
 // ─────────────────────────────────────────────────────────────
-export async function createGrapeAppellation(payload: CreateGrapeAppellationPayload) {
+export async function createGrapeAppellation(payload: GrapeAppellationCreatePayload) {
   validatePayload(payload.rule, payload.min_pct ?? null, payload.max_pct ?? null)
 
   const client = getSupabaseClient()
@@ -138,7 +115,7 @@ export async function createGrapeAppellation(payload: CreateGrapeAppellationPayl
 // ─────────────────────────────────────────────────────────────
 // Update
 // ─────────────────────────────────────────────────────────────
-export async function updateGrapeAppellation(id: string, payload: UpdateGrapeAppellationPayload) {
+export async function updateGrapeAppellation(id: string, payload: GrapeAppellationUpdatePayload) {
   const client = getSupabaseClient()
 
   // Fetch current record to fill defaults
