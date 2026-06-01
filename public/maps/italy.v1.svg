@@ -1,0 +1,47 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 400 600"
+  width="100%"
+  height="100%"
+>
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f8f8f8" />
+
+  <!-- Italy outline (decorative) -->
+  <path
+    id="italy_outline"
+    d="M100 50 L300 50 L350 200 L250 550 L150 550 L50 200 Z"
+    fill="#e0e0e0"
+    stroke="#333"
+    stroke-width="2"
+  />
+
+  <!-- Piedmont (top-left) -->
+  <path
+    id="italy_piedmont"
+    d="M110 70 L200 70 L180 150 L120 150 Z"
+    fill="#c0392b"
+    stroke="#222"
+  />
+
+  <!-- Veneto (top-right) -->
+  <path
+    id="italy_veneto"
+    d="M210 70 L290 70 L280 150 L200 150 Z"
+    fill="#2980b9"
+    stroke="#222"
+  />
+
+  <!-- Tuscany (center) -->
+  <path
+    id="italy_tuscany"
+    d="M140 180 L260 180 L240 300 L160 300 Z"
+    fill="#27ae60"
+    stroke="#222"
+  />
+
+  <!-- Labels (decorative text) -->
+  <text x="130" y="110" font-size="12" fill="#000">Piedmont</text>
+  <text x="220" y="110" font-size="12" fill="#000">Veneto</text>
+  <text x="180" y="240" font-size="12" fill="#000">Tuscany</text>
+</svg>

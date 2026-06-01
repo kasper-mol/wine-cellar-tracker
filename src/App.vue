@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-
 import { getSupabaseClient, initializeSupabase } from '@/lib/supabase'
 import MenuBar from './components/MenuBar.vue'
 

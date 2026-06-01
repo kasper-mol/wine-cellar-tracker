@@ -17,6 +17,8 @@ import GrapeVarietiesPage from '@/pages/manage/GrapeVarietiesPage.vue'
 import VintageRatingsManage from '@/pages/manage/VintageRatingsManage.vue'
 import VintageRatingBatch from '@/pages/manage/VintageRatingBatch.vue'
 import FlavorDescriptorsPage from '@/pages/manage/FlavorDescriptorsPage.vue'
+import WineMapManagePage from '@/pages/manage/winemaps/[id].vue'
+import WineMapsPage from '@/pages/manage/winemaps/index.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -107,6 +109,17 @@ const router = createRouter({
       path: '/manage/flavor-descriptors',
       name: 'flavor-descriptors',
       component: FlavorDescriptorsPage,
+    },
+    {
+      path: '/manage/wine-maps',
+      name: 'wine-maps',
+      component: WineMapsPage,
+    },
+    {
+      path: '/manage/wine-maps/:id',
+      name: 'wine-map-manage',
+      component: WineMapManagePage,
+      props: true,
     },
   ],
 })

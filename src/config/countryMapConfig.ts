@@ -1,4 +1,4 @@
-import franceMapSvg from '@/assets/france_svg.svg?raw'
+import franceMapSvg from '@/assets/france.v1.svg'
 
 export type CountryMapRegion = {
   key: string

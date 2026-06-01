@@ -6,7 +6,7 @@ import WineCountriesTable from '@/components/WineCountries/WineCountriesTable.vu
 import CreateCountryDialog from '@/components/WineCountries/CreateCountryDialog.vue'
 import EditCountryDialog from '@/components/WineCountries/EditCountryDialog.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
-
+import { getWineMapByKey } from '@/services/wineMaps'
 const wineCountriesStore = useWineCountriesStore()
 const { countries } = storeToRefs(wineCountriesStore)
 
@@ -47,6 +47,10 @@ async function handleDelete(id: string) {
     deletingId.value = null
   }
 }
+onMounted(async () => {
+  const map = await getWineMapByKey('italy-country')
+  console.log(map)
+})
 
 function openEditDialog(id: string) {
   selectedCountryId.value = id

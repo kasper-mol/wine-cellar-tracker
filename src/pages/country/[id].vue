@@ -1,3 +1,4 @@
+<!-- src/pages/CountryDetailPage.vue -->
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -5,12 +6,13 @@ import { storeToRefs } from 'pinia'
 import { ArrowLeft } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import CountryOverview from '@/components/WineCountries/CountryOverview.vue'
-import CountryMapViewer from '@/components/WineCountries/CountryMapViewer.vue'
+import WineMapDisplay from '@/components/WineCountries/wineMapDisplay.vue'
 import CountryRegionsList from '@/components/WineCountries/CountryRegionsList.vue'
 import CountryAppellationsList from '@/components/WineCountries/CountryAppellationsList.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
+import { useWineMapsStore } from '@/stores/wineMaps'
 
 defineOptions({
   name: 'CountryDetailPage',
@@ -21,14 +23,30 @@ const router = useRouter()
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
+const wineMapsStore = useWineMapsStore()
 
 const { countries } = storeToRefs(wineCountriesStore)
 const { regions } = storeToRefs(wineRegionsStore)
 const { appellations } = storeToRefs(wineAppellationsStore)
+const { maps: wineMaps } = storeToRefs(wineMapsStore)
 
 const countryId = route.params.id as string
 
 const country = computed(() => countries.value.find((c) => c.id === countryId))
+
+const countryMap = computed(() => {
+  if (!country.value) return null
+  return (
+    wineMaps.value.find(
+      (map) => map.owner_wine_country_id === country.value?.id && map.is_active,
+    ) ?? null
+  )
+})
+
+console.log('country', country.value)
+console.log('wineMaps', wineMaps.value)
+console.log('countryMap', countryMap.value)
+const countryMapKey = computed(() => countryMap.value?.key ?? null)
 
 const countryRegions = computed(() => {
   return regions.value
@@ -65,6 +83,7 @@ onMounted(async () => {
     wineCountriesStore.loadAll(),
     wineRegionsStore.loadAll(),
     wineAppellationsStore.loadAll(),
+    wineMapsStore.fetchMapsForCountry(countryId),
   ])
 })
 
@@ -95,7 +114,7 @@ function navigateToAppellation(appellationId: string) {
         :appellation-count="countryAppellations.length"
       />
 
-      <CountryMapViewer :country-name="country.name" />
+      <WineMapDisplay v-if="countryMapKey" :map-key="countryMapKey" />
 
       <CountryRegionsList :regions="countryRegions" @select-region="navigateToRegion" />
 
