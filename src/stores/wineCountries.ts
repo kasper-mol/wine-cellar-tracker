@@ -18,12 +18,17 @@ function sortByName<T extends { name: string }>(list: T[]) {
 
 export const useWineCountriesStore = defineStore('wineCountries', () => {
   const countries = ref<WineCountryRecord[]>([])
+  const loading = ref(false)
 
   async function loadAll() {
-    console.log('loading countries')
-    const data = await fetchWineCountries()
-    countries.value = sortByName(data)
-    return countries.value
+    loading.value = true
+    try {
+      const data = await fetchWineCountries()
+      countries.value = sortByName(data)
+      return countries.value
+    } finally {
+      loading.value = false
+    }
   }
 
   async function create(payload: WineCountryCreatePayload) {
@@ -43,11 +48,5 @@ export const useWineCountriesStore = defineStore('wineCountries', () => {
     countries.value = countries.value.filter((c) => c.id !== id)
   }
 
-  return {
-    countries,
-    loadAll,
-    create,
-    update,
-    remove,
-  }
+  return { countries, loading, loadAll, create, update, remove }
 })

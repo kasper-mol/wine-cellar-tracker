@@ -11,16 +11,18 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploader from '@/components/ImageUploader.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useFeedback } from '@/composables/useFeedback'
 
 const props = defineProps<{ regionId: string | null }>()
 
 const wineRegionsStore = useWineRegionsStore()
 const wineCountriesStore = useWineCountriesStore()
+const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const isUpdating = ref(false)
-const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 const open = ref(false)
 
 function openDialog() {
@@ -28,6 +30,7 @@ function openDialog() {
 }
 function closeDialog() {
   open.value = false
+  clearFeedback()
 }
 defineExpose({ openDialog })
 
@@ -56,16 +59,16 @@ watch(
 async function handleUpdate() {
   if (!selectedRegion.value) return
   if (!form.name.trim()) {
-    feedback.value = { type: 'error', message: 'Region name is required.' }
+    setError(null, 'Region name is required.')
     return
   }
   if (!form.countryId) {
-    feedback.value = { type: 'error', message: 'Select a country first.' }
+    setError(null, 'Select a country first.')
     return
   }
 
   isUpdating.value = true
-  feedback.value = null
+  clearFeedback()
 
   try {
     await wineRegionsStore.update(selectedRegion.value.id, {
@@ -73,13 +76,10 @@ async function handleUpdate() {
       country_id: form.countryId,
       imageFile: form.imageFile,
     })
-    feedback.value = { type: 'success', message: 'Region updated successfully.' }
+    setSuccess('Region updated successfully.')
     closeDialog()
   } catch (error) {
-    feedback.value = {
-      type: 'error',
-      message: (error as Error).message || 'Failed to update region.',
-    }
+    setError(error, 'Failed to update region.')
   } finally {
     isUpdating.value = false
   }
@@ -129,6 +129,7 @@ async function handleUpdate() {
             />
           </div>
         </div>
+        <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
           <Button type="submit" :disabled="isUpdating">{{
             isUpdating ? 'Saving…' : 'Save'

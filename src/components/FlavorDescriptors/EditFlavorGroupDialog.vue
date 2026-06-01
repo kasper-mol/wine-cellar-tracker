@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
+import { useFeedback } from '@/composables/useFeedback'
 
 const props = defineProps<{
   group: { level: string; category: string | null } | null
@@ -24,27 +26,23 @@ const emit = defineEmits<{
 
 const flavorDescriptorsStore = useFlavorDescriptorsStore()
 const { descriptors } = storeToRefs(flavorDescriptorsStore)
+const { feedback, setError, clearFeedback } = useFeedback()
 
 const groupDescriptors = computed(() => {
   if (!props.group) return []
   return descriptors.value
     .filter(
-      (descriptor) =>
-        descriptor.level === props.group?.level &&
-        (descriptor.category ?? null) === (props.group?.category ?? null),
+      (d) =>
+        d.level === props.group?.level &&
+        (d.category ?? null) === (props.group?.category ?? null),
     )
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const form = reactive({
-  level: '',
-  category: '',
-})
-
+const form = reactive({ level: '', category: '' })
 const newDescriptorName = ref('')
 const isSaving = ref(false)
 const isAdding = ref(false)
-const feedback = ref<string | null>(null)
 
 watch(
   () => props.group,
@@ -52,7 +50,7 @@ watch(
     form.level = group?.level ?? ''
     form.category = group?.category ?? ''
     newDescriptorName.value = ''
-    feedback.value = null
+    clearFeedback()
   },
   { immediate: true },
 )
@@ -64,24 +62,23 @@ function openDialog() {
 function closeDialog() {
   open.value = false
 }
-
 defineExpose({ openDialog })
 
 async function handleUpdateGroup() {
   if (!props.group) return
   const level = form.level.trim()
   if (!level) {
-    feedback.value = 'Level is required.'
+    setError(null, 'Level is required.')
     return
   }
 
   isSaving.value = true
-  feedback.value = null
+  clearFeedback()
 
   try {
     await Promise.all(
-      groupDescriptors.value.map((descriptor) =>
-        flavorDescriptorsStore.update(descriptor.id, {
+      groupDescriptors.value.map((d) =>
+        flavorDescriptorsStore.update(d.id, {
           level,
           category: form.category.trim() || null,
         }),
@@ -90,7 +87,7 @@ async function handleUpdateGroup() {
     emit('groupUpdated', { level, category: form.category.trim() || null })
     closeDialog()
   } catch (error) {
-    feedback.value = (error as Error).message || 'Failed to update group.'
+    setError(error, 'Failed to update group.')
   } finally {
     isSaving.value = false
   }
@@ -99,16 +96,16 @@ async function handleUpdateGroup() {
 async function handleAddDescriptor() {
   const name = newDescriptorName.value.trim()
   if (!name) {
-    feedback.value = 'Descriptor name is required.'
+    setError(null, 'Descriptor name is required.')
     return
   }
   if (!form.level.trim()) {
-    feedback.value = 'Level is required before adding a descriptor.'
+    setError(null, 'Level is required before adding a descriptor.')
     return
   }
 
   isAdding.value = true
-  feedback.value = null
+  clearFeedback()
 
   try {
     await flavorDescriptorsStore.add({
@@ -118,7 +115,7 @@ async function handleAddDescriptor() {
     })
     newDescriptorName.value = ''
   } catch (error) {
-    feedback.value = (error as Error).message || 'Failed to add descriptor.'
+    setError(error, 'Failed to add descriptor.')
   } finally {
     isAdding.value = false
   }
@@ -135,7 +132,7 @@ async function handleRemoveDescriptor(id: string, name: string) {
       closeDialog()
     }
   } catch (error) {
-    feedback.value = (error as Error).message || 'Failed to remove descriptor.'
+    setError(error, 'Failed to remove descriptor.')
   }
 }
 </script>
@@ -186,11 +183,7 @@ async function handleRemoveDescriptor(id: string, name: string) {
           <div class="mt-4 flex flex-wrap items-end gap-2">
             <div class="flex-1 space-y-1">
               <Label for="newDescriptor">Add descriptor</Label>
-              <Input
-                id="newDescriptor"
-                v-model="newDescriptorName"
-                placeholder="Descriptor name"
-              />
+              <Input id="newDescriptor" v-model="newDescriptorName" placeholder="Descriptor name" />
             </div>
             <Button type="button" :disabled="isAdding" @click="handleAddDescriptor">
               {{ isAdding ? 'Adding...' : 'Add' }}
@@ -198,7 +191,7 @@ async function handleRemoveDescriptor(id: string, name: string) {
           </div>
         </div>
 
-        <p v-if="feedback" class="text-sm text-destructive">{{ feedback }}</p>
+        <FeedbackBanner :feedback="feedback" />
 
         <DialogFooter>
           <Button type="submit" :disabled="isSaving || !groupDescriptors.length">

@@ -3,15 +3,18 @@ import { ref, onMounted } from 'vue'
 import WineAppellationsTable from '@/components/WineAppellations/WineAppellationsTable.vue'
 import CreateAppellationDialog from '@/components/WineAppellations/CreateAppellationsDialog.vue'
 import EditAppellationDialog from '@/components/WineAppellations/EditAppellationsDialog.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
+import { useFeedback } from '@/composables/useFeedback'
 
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
 const wineGrapeVaritiesStore = useWineGrapeVarietiesStore()
+const { feedback, setSuccess, setError } = useFeedback()
 
 const selectedAppellationId = ref<string | null>(null)
 const editDialogRef = ref<InstanceType<typeof EditAppellationDialog> | null>(null)
@@ -30,7 +33,7 @@ function handleEditAppellation(id: string) {
 
 async function handleDeleteAppellation(id: string) {
   if (!id) return
-  const app = wineAppellationsStore.appellations.find((appellation) => appellation.id === id)
+  const app = wineAppellationsStore.appellations.find((a) => a.id === id)
   const confirmed = window.confirm(
     app ? `Delete ${app.name}? This action cannot be undone.` : 'Delete this appellation?',
   )
@@ -39,8 +42,9 @@ async function handleDeleteAppellation(id: string) {
   try {
     await wineAppellationsStore.remove(id)
     if (selectedAppellationId.value === id) selectedAppellationId.value = null
+    setSuccess('Appellation removed.')
   } catch (error) {
-    console.error(error)
+    setError(error, 'Failed to delete appellation.')
   }
 }
 </script>
@@ -57,7 +61,6 @@ async function handleDeleteAppellation(id: string) {
       </div>
       <div class="flex gap-2">
         <CreateAppellationDialog />
-
         <EditAppellationDialog
           ref="editDialogRef"
           :appellationId="selectedAppellationId || undefined"
@@ -65,11 +68,10 @@ async function handleDeleteAppellation(id: string) {
       </div>
     </div>
 
-    <div>
-      <WineAppellationsTable
-        @editAppellation="handleEditAppellation"
-        @deleteAppellation="handleDeleteAppellation"
-      />
-    </div>
+    <WineAppellationsTable
+      @editAppellation="handleEditAppellation"
+      @deleteAppellation="handleDeleteAppellation"
+    />
+    <FeedbackBanner :feedback="feedback" />
   </div>
 </template>

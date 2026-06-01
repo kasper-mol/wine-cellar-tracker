@@ -1,61 +1,44 @@
-import type { PostgrestError } from '@supabase/supabase-js'
-
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, throwIfError } from '@/lib/supabase'
+import { entityImagePath, uploadEntityImage } from '@/lib/storage'
 import type {
   WineCountryCreatePayload,
-  WineCountryUpdatePayload,
   WineCountryRecord,
+  WineCountryUpdatePayload,
 } from '@/types/wineCountries'
 
-function throwIfError(error: PostgrestError | null) {
-  if (error) {
-    throw new Error(error.message)
-  }
-}
-
 export async function fetchWineCountries() {
-  const client = getSupabaseClient()
-  const { data, error } = await client.from('wine_countries').select('*').order('name')
+  const db = getSupabaseClient()
+  const { data, error } = await db.from('wine_countries').select('*').order('name')
   throwIfError(error)
   return (data ?? []) as WineCountryRecord[]
 }
 
 export async function createWineCountry(payload: WineCountryCreatePayload) {
-  const supabase = getSupabaseClient()
-  const { data: created, error } = await supabase
+  const db = getSupabaseClient()
+  const { data: created, error } = await db
     .from('wine_countries')
-    .insert({
-      name: payload.name.trim(),
-      code: payload.code?.trim() || null,
-    })
+    .insert({ name: payload.name.trim(), code: payload.code?.trim() || null })
     .select()
     .single()
   throwIfError(error)
 
-  if (!payload.imageFile) {
-    return created as WineCountryRecord
+  if (!payload.imageFile) return created as WineCountryRecord
+
+  const path = entityImagePath('countries', created.id, payload.imageFile.name)
+  let publicUrl: string
+  try {
+    publicUrl = await uploadEntityImage('country-images', path, payload.imageFile)
+  } catch (err) {
+    await db.from('wine_countries').delete().eq('id', created.id)
+    throw err
   }
 
-  const ext = payload.imageFile.name.split('.').pop() || 'jpg'
-  const filePath = `countries/${created.id}.${ext}`
-  const { error: uploadError } = await supabase.storage
-    .from('country-images')
-    .upload(filePath, payload.imageFile, { upsert: true })
-  if (uploadError) {
-    await supabase.from('wine_countries').delete().eq('id', created.id)
-    throw uploadError
-  }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from('country-images').getPublicUrl(filePath)
-
-  const { error: updateError } = await supabase
+  const { error: updateError } = await db
     .from('wine_countries')
     .update({ image_url: publicUrl })
     .eq('id', created.id)
   if (updateError) {
-    await supabase.from('wine_countries').delete().eq('id', created.id)
+    await db.from('wine_countries').delete().eq('id', created.id)
     throw updateError
   }
 
@@ -63,23 +46,15 @@ export async function createWineCountry(payload: WineCountryCreatePayload) {
 }
 
 export async function updateWineCountry(id: string, payload: WineCountryUpdatePayload) {
-  const supabase = getSupabaseClient()
-  let image_url: string | null = null
+  const db = getSupabaseClient()
 
+  let image_url: string | null = null
   if (payload.imageFile) {
-    const ext = payload.imageFile.name.split('.').pop() || 'jpg'
-    const filePath = `countries/${id}.${ext}`
-    const { error: uploadError } = await supabase.storage
-      .from('country-images')
-      .upload(filePath, payload.imageFile, { upsert: true })
-    if (uploadError) throw uploadError
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('country-images').getPublicUrl(filePath)
-    image_url = publicUrl
+    const path = entityImagePath('countries', id, payload.imageFile.name)
+    image_url = await uploadEntityImage('country-images', path, payload.imageFile)
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('wine_countries')
     .update({
       ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
@@ -94,7 +69,7 @@ export async function updateWineCountry(id: string, payload: WineCountryUpdatePa
 }
 
 export async function deleteWineCountry(id: string) {
-  const client = getSupabaseClient()
-  const { error } = await client.from('wine_countries').delete().eq('id', id)
+  const db = getSupabaseClient()
+  const { error } = await db.from('wine_countries').delete().eq('id', id)
   throwIfError(error)
 }

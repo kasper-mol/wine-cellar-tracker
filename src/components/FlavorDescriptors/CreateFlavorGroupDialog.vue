@@ -10,13 +10,15 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
+import { useFeedback } from '@/composables/useFeedback'
 
 const flavorDescriptorsStore = useFlavorDescriptorsStore()
+const { feedback, setError, clearFeedback } = useFeedback()
 
 const open = ref(false)
 const isSaving = ref(false)
-const feedback = ref<string | null>(null)
 
 const form = reactive({
   level: '',
@@ -26,7 +28,7 @@ const form = reactive({
 
 function openDialog() {
   open.value = true
-  feedback.value = null
+  clearFeedback()
 }
 
 function closeDialog() {
@@ -41,12 +43,12 @@ async function handleCreate() {
   const name = form.name.trim()
 
   if (!level || !name) {
-    feedback.value = 'Level and descriptor name are required.'
+    setError(null, 'Level and descriptor name are required.')
     return
   }
 
   isSaving.value = true
-  feedback.value = null
+  clearFeedback()
 
   try {
     await flavorDescriptorsStore.add({
@@ -56,7 +58,7 @@ async function handleCreate() {
     })
     closeDialog()
   } catch (error) {
-    feedback.value = (error as Error).message || 'Failed to create flavor group.'
+    setError(error, 'Failed to create flavor group.')
   } finally {
     isSaving.value = false
   }
@@ -83,7 +85,7 @@ async function handleCreate() {
           <Label for="createName">First descriptor</Label>
           <Input id="createName" v-model="form.name" placeholder="e.g. cherry" required />
         </div>
-        <p v-if="feedback" class="text-sm text-destructive">{{ feedback }}</p>
+        <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
           <Button type="submit" :disabled="isSaving">
             {{ isSaving ? 'Saving...' : 'Create group' }}

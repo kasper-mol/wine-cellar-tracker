@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import type { UserWine } from '@/types/wines'
-
-export interface MainState {
-  userWines: UserWine[]
-}
 
 const dummyWines: UserWine[] = [
   {
@@ -78,16 +75,16 @@ const dummyWines: UserWine[] = [
   },
 ]
 
-export const useMainStore = defineStore('main', {
-  state: (): MainState => ({
-    userWines: dummyWines,
-  }),
-  getters: {
-    totalBottleCount: (state) => state.userWines.reduce((total, wine) => total + wine.quantity, 0),
-  },
-  actions: {
-    setUserWines(wines: UserWine[]) {
-      this.userWines = wines
-    },
-  },
+export const useMainStore = defineStore('main', () => {
+  const userWines = ref<UserWine[]>(dummyWines)
+
+  const totalBottleCount = computed(() =>
+    userWines.value.reduce((total, wine) => total + wine.quantity, 0),
+  )
+
+  function setUserWines(wines: UserWine[]) {
+    userWines.value = wines
+  }
+
+  return { userWines, totalBottleCount, setUserWines }
 })

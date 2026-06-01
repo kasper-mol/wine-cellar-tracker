@@ -11,12 +11,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploader from '@/components/ImageUploader.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import type { GrapeColor } from '@/types/grapeVarieties'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
+import { useFeedback } from '@/composables/useFeedback'
 
 const props = defineProps<{ grapeId: string | null }>()
 
 const grapeVarietiesStore = useWineGrapeVarietiesStore()
+const { feedback, setError, clearFeedback } = useFeedback()
+
 const dialogOpen = ref(false)
 const isUpdating = ref(false)
 
@@ -38,14 +42,13 @@ const selectedGrape = computed(() =>
   grapeVarietiesStore.grapeVarieties.find((g) => g.id === props.grapeId),
 )
 
-// When the selected grape changes, populate the form
 watch(selectedGrape, (grape) => {
   if (!grape) return
   editForm.name = grape.name
   editForm.color = grape.color ?? ''
   editForm.description = grape.description ?? ''
   editForm.currentImageUrl = grape.image_url ?? ''
-  editForm.imageFile = null // reset file
+  editForm.imageFile = null
 })
 
 function normalizeColor(value: string) {
@@ -56,17 +59,20 @@ function normalizeColor(value: string) {
 async function handleUpdate() {
   if (!selectedGrape.value) return
   if (!editForm.name.trim()) return
+
   isUpdating.value = true
+  clearFeedback()
 
   try {
     await grapeVarietiesStore.update(selectedGrape.value.id, {
       name: editForm.name.trim(),
       color: normalizeColor(editForm.color),
       description: editForm.description.trim() || null,
-      imageFile: editForm.imageFile, // pass new image if selected
+      imageFile: editForm.imageFile,
     })
-
     dialogOpen.value = false
+  } catch (error) {
+    setError(error, 'Failed to update grape variety.')
   } finally {
     isUpdating.value = false
   }
@@ -110,21 +116,21 @@ defineExpose({ openDialog })
           ></textarea>
         </div>
 
-        <!-- ⭐ Image uploader -->
         <ImageUploader
           v-model="editForm.imageFile"
           :label="editForm.currentImageUrl ? 'Change Grape Image' : 'Grape Image (optional)'"
         />
 
-        <!-- Show current image if no new file selected -->
         <div v-if="editForm.currentImageUrl && !editForm.imageFile" class="pt-2">
           <Label>Current Image</Label>
           <img
             :src="editForm.currentImageUrl"
             alt="Current Grape Image"
-            class="w-32 h-32 object-cover rounded-md border"
+            class="h-32 w-32 rounded-md border object-cover"
           />
         </div>
+
+        <FeedbackBanner :feedback="feedback" />
 
         <DialogFooter>
           <Button type="submit" :disabled="isUpdating">

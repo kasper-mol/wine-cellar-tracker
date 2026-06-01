@@ -18,11 +18,17 @@ function sortByName<T extends { name: string }>(list: T[]) {
 
 export const useWineGrapeVarietiesStore = defineStore('wineGrapeVarietiesStore', () => {
   const grapeVarieties = ref<GrapeVarietyRecord[]>([])
+  const loading = ref(false)
 
   async function loadAll() {
-    const data = await fetchGrapeVarieties()
-    grapeVarieties.value = sortByName(data)
-    return grapeVarieties.value
+    loading.value = true
+    try {
+      const data = await fetchGrapeVarieties()
+      grapeVarieties.value = sortByName(data)
+      return grapeVarieties.value
+    } finally {
+      loading.value = false
+    }
   }
 
   async function create(payload: GrapeVarietyCreatePayload) {
@@ -44,11 +50,5 @@ export const useWineGrapeVarietiesStore = defineStore('wineGrapeVarietiesStore',
     grapeVarieties.value = grapeVarieties.value.filter((g) => g.id !== id)
   }
 
-  return {
-    grapeVarieties,
-    loadAll,
-    create,
-    update,
-    remove,
-  }
+  return { grapeVarieties, loading, loadAll, create, update, remove }
 })

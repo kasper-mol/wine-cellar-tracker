@@ -12,9 +12,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { GrapeColor } from '@/types/grapeVarieties'
 import ImageUploader from '../ImageUploader.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
+import { useFeedback } from '@/composables/useFeedback'
 
 const grapeVarietiesStore = useWineGrapeVarietiesStore()
+const { feedback, setError, clearFeedback } = useFeedback()
+
 const dialogOpen = ref(false)
 const isCreating = ref(false)
 const createForm = reactive({
@@ -35,8 +39,14 @@ function normalizeColor(value: string) {
 }
 
 async function handleCreate() {
-  if (!createForm.name.trim()) return
+  if (!createForm.name.trim()) {
+    setError(null, 'Grape name is required.')
+    return
+  }
+
   isCreating.value = true
+  clearFeedback()
+
   try {
     await grapeVarietiesStore.create({
       name: createForm.name.trim(),
@@ -49,6 +59,8 @@ async function handleCreate() {
     createForm.color = ''
     createForm.description = ''
     createForm.imageFile = null
+  } catch (error) {
+    setError(error, 'Failed to add grape variety.')
   } finally {
     isCreating.value = false
   }
@@ -91,6 +103,7 @@ defineExpose({ openDialog })
           ></textarea>
         </div>
         <ImageUploader v-model="createForm.imageFile" label="Grape Image (optional)" />
+        <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
           <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>
         </DialogFooter>

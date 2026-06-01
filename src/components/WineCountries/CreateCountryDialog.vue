@@ -11,14 +11,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploader from '@/components/ImageUploader.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useFeedback } from '@/composables/useFeedback'
 
 const wineCountriesStore = useWineCountriesStore()
+const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const dialogOpen = ref(false)
 const form = reactive({ name: '', code: '', imageFile: null as File | null })
 const isCreating = ref(false)
-const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 
 function normalizeCode(value: string) {
   return value.trim() ? value.trim().toUpperCase() : ''
@@ -27,12 +29,12 @@ function normalizeCode(value: string) {
 async function handleCreate() {
   const name = form.name.trim()
   if (!name) {
-    feedback.value = { type: 'error', message: 'Country name is required.' }
+    setError(null, 'Country name is required.')
     return
   }
 
   isCreating.value = true
-  feedback.value = null
+  clearFeedback()
 
   try {
     await wineCountriesStore.create({
@@ -40,13 +42,10 @@ async function handleCreate() {
       code: normalizeCode(form.code) || null,
       imageFile: form.imageFile,
     })
-    feedback.value = { type: 'success', message: 'Country added successfully.' }
+    setSuccess('Country added successfully.')
     closeDialog()
   } catch (error) {
-    feedback.value = {
-      type: 'error',
-      message: (error as Error).message || 'Failed to add country.',
-    }
+    setError(error, 'Failed to add country.')
   } finally {
     isCreating.value = false
   }
@@ -60,7 +59,7 @@ function closeDialog() {
   form.name = ''
   form.code = ''
   form.imageFile = null
-  feedback.value = null
+  clearFeedback()
 }
 
 defineExpose({ openDialog })
@@ -85,13 +84,11 @@ defineExpose({ openDialog })
           <Input id="code" v-model="form.code" placeholder="FR" class="uppercase" maxlength="3" />
         </div>
         <ImageUploader v-model="form.imageFile" label="Country Image (optional)" />
+        <FeedbackBanner :feedback="feedback" />
         <DialogFooter class="flex justify-end gap-2">
           <Button variant="outline" type="button" @click="closeDialog">Cancel</Button>
           <Button type="submit" :disabled="isCreating">{{ isCreating ? 'Adding…' : 'Add' }}</Button>
         </DialogFooter>
-        <p v-if="feedback" :class="feedback.type === 'error' ? 'text-red-500' : 'text-green-500'">
-          {{ feedback.message }}
-        </p>
       </form>
     </DialogContent>
   </Dialog>

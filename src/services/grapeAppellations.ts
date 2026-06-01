@@ -1,5 +1,4 @@
-import type { PostgrestError } from '@supabase/supabase-js'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, throwIfError } from '@/lib/supabase'
 import type {
   GrapeAppellationCreatePayload,
   GrapeAppellationRecord,
@@ -7,13 +6,6 @@ import type {
   GrapeAppellationUpdatePayload,
 } from '@/types/grapeAppellations'
 
-function throwIfError(error: PostgrestError | null) {
-  if (error) {
-    throw new Error(error.message)
-  }
-}
-
-// Includes nested grape for convenience
 const SELECT_COLUMNS = `
   id,
   appellation_id,
@@ -26,74 +18,53 @@ const SELECT_COLUMNS = `
   grape:grape_varieties(*)
 `
 
-// ─────────────────────────────────────────────────────────────
-// Validation helpers (client-side, mirrors DB constraints)
-// ─────────────────────────────────────────────────────────────
 function validatePayload(
   rule: GrapeRuleType,
   minPct: number | null | undefined,
   maxPct: number | null | undefined,
 ) {
-  // required must have min_pct
   if (rule === 'required' && (minPct === null || minPct === undefined)) {
     throw new Error('Required grapes must include a min_pct value')
   }
-
-  // forbidden cannot have min/max
   if (
     rule === 'forbidden' &&
     ((minPct !== null && minPct !== undefined) || (maxPct !== null && maxPct !== undefined))
   ) {
     throw new Error('Forbidden grapes may not define percentage ranges')
   }
-
-  // min <= max
-  if (minPct !== null && minPct !== undefined && maxPct !== null && maxPct !== undefined) {
-    if (minPct > maxPct) {
-      throw new Error('min_pct cannot be greater than max_pct')
-    }
+  if (minPct != null && maxPct != null && minPct > maxPct) {
+    throw new Error('min_pct cannot be greater than max_pct')
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Fetch by appellation
-// ─────────────────────────────────────────────────────────────
 export async function fetchGrapeAppellationsByAppellation(appellationId: string) {
-  const client = getSupabaseClient()
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('grape_appellations')
     .select(SELECT_COLUMNS)
     .eq('appellation_id', appellationId)
     .order('rule', { ascending: true })
     .order('grape_id', { ascending: true })
-
   throwIfError(error)
   return (data ?? []) as unknown as GrapeAppellationRecord[]
 }
 
-// ─────────────────────────────────────────────────────────────
-// Fetch by grape (rare but useful)
-// ─────────────────────────────────────────────────────────────
 export async function fetchGrapeAppellationsByGrape(grapeId: string) {
-  const client = getSupabaseClient()
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('grape_appellations')
     .select(SELECT_COLUMNS)
     .eq('grape_id', grapeId)
     .order('appellation_id')
-
   throwIfError(error)
   return (data ?? []) as unknown as GrapeAppellationRecord[]
 }
 
-// ─────────────────────────────────────────────────────────────
-// Create
-// ─────────────────────────────────────────────────────────────
 export async function createGrapeAppellation(payload: GrapeAppellationCreatePayload) {
   validatePayload(payload.rule, payload.min_pct ?? null, payload.max_pct ?? null)
 
-  const client = getSupabaseClient()
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('grape_appellations')
     .insert({
       appellation_id: payload.appellation_id,
@@ -104,63 +75,40 @@ export async function createGrapeAppellation(payload: GrapeAppellationCreatePayl
     })
     .select(SELECT_COLUMNS)
     .single()
-
   throwIfError(error)
-  if (!data) {
-    throw new Error('Failed to create grape appellation')
-  }
+  if (!data) throw new Error('Failed to create grape appellation')
   return data as unknown as GrapeAppellationRecord
 }
 
-// ─────────────────────────────────────────────────────────────
-// Update
-// ─────────────────────────────────────────────────────────────
 export async function updateGrapeAppellation(id: string, payload: GrapeAppellationUpdatePayload) {
-  const client = getSupabaseClient()
+  const db = getSupabaseClient()
 
-  // Fetch current record to fill defaults
-  const existing = await client
+  const { data: existing, error: fetchError } = await db
     .from('grape_appellations')
     .select('rule, min_pct, max_pct')
     .eq('id', id)
     .single()
+  throwIfError(fetchError)
+  if (!existing) throw new Error('Grape appellation not found')
 
-  throwIfError(existing.error)
-
-  if (!existing.data) {
-    throw new Error('Grape appellation not found')
-  }
-
-  const rule = payload.rule ?? existing.data.rule
-  const min_pct = payload.min_pct !== undefined ? payload.min_pct : existing.data.min_pct
-  const max_pct = payload.max_pct !== undefined ? payload.max_pct : existing.data.max_pct
-
+  const rule = payload.rule ?? existing.rule
+  const min_pct = payload.min_pct !== undefined ? payload.min_pct : existing.min_pct
+  const max_pct = payload.max_pct !== undefined ? payload.max_pct : existing.max_pct
   validatePayload(rule, min_pct, max_pct)
 
-  const { data, error } = await client
+  const { data, error } = await db
     .from('grape_appellations')
-    .update({
-      rule,
-      min_pct,
-      max_pct,
-    })
+    .update({ rule, min_pct, max_pct })
     .eq('id', id)
     .select(SELECT_COLUMNS)
     .single()
-
   throwIfError(error)
-  if (!data) {
-    throw new Error('Failed to update grape appellation')
-  }
+  if (!data) throw new Error('Failed to update grape appellation')
   return data as unknown as GrapeAppellationRecord
 }
 
-// ─────────────────────────────────────────────────────────────
-// Delete
-// ─────────────────────────────────────────────────────────────
 export async function deleteGrapeAppellation(id: string) {
-  const client = getSupabaseClient()
-  const { error } = await client.from('grape_appellations').delete().eq('id', id)
-
+  const db = getSupabaseClient()
+  const { error } = await db.from('grape_appellations').delete().eq('id', id)
   throwIfError(error)
 }

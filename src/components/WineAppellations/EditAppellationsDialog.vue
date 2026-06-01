@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, defineExpose, onMounted } from 'vue'
+import { ref, reactive, computed, watch, defineExpose } from 'vue'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,11 +11,13 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploader from '@/components/ImageUploader.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { storeToRefs } from 'pinia'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
+import { useFeedback } from '@/composables/useFeedback'
 
 const props = defineProps<{ appellationId: string | null | undefined }>()
 const emit = defineEmits<{
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
+const { feedback, setError, clearFeedback } = useFeedback()
 
 const { countries } = storeToRefs(wineCountriesStore)
 const dialogOpen = ref(false)
@@ -47,10 +50,6 @@ const regionsForCountry = computed(() =>
     : [],
 )
 
-onMounted(() => {
-  console.log(selectedAppellation.value)
-})
-
 watch(
   selectedAppellation,
   (appellation?) => {
@@ -70,6 +69,8 @@ async function handleUpdate() {
   if (!editForm.regionId) return
 
   isUpdating.value = true
+  clearFeedback()
+
   try {
     await wineAppellationsStore.update(props.appellationId, {
       name,
@@ -78,6 +79,8 @@ async function handleUpdate() {
     })
     closeDialog()
     emit('updated')
+  } catch (error) {
+    setError(error, 'Failed to update appellation.')
   } finally {
     isUpdating.value = false
   }
@@ -89,6 +92,7 @@ function openDialog() {
 
 function closeDialog() {
   dialogOpen.value = false
+  clearFeedback()
 }
 
 defineExpose({ openDialog })
@@ -127,7 +131,9 @@ defineExpose({ openDialog })
         <div class="space-y-2">
           <ImageUploader
             v-model="editForm.imageFile"
-            :label="editForm.currentImageUrl ? 'Change Appellation Image' : 'Appellation Image (optional)'"
+            :label="
+              editForm.currentImageUrl ? 'Change Appellation Image' : 'Appellation Image (optional)'
+            "
           />
           <div v-if="editForm.currentImageUrl && !editForm.imageFile" class="space-y-1">
             <Label>Current Image</Label>
@@ -139,7 +145,7 @@ defineExpose({ openDialog })
           </div>
         </div>
         <GrapeAppellationManager :appellationId="appellationId ?? null" />
-
+        <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
           <Button type="button" variant="outline" @click="closeDialog">Cancel</Button>
           <Button type="submit" :disabled="isUpdating">{{

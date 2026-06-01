@@ -1,4 +1,3 @@
-// src/stores/wineMaps.ts
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
@@ -7,26 +6,26 @@ import {
   getWineMapByKey,
   getWineMapsForCountry,
   importWineMapAreas,
-  listWineAppellations,
-  listWineCountries,
   listWineMaps,
-  listWineRegions,
   resolveWineMapArea,
   updateWineMapArea,
   updateWineMapDefinition,
 } from '@/services/wineMaps'
+import { fetchWineCountries } from '@/services/wineCountries'
+import { fetchWineRegions } from '@/services/wineRegions'
+import { fetchWineAppellations } from '@/services/wineAppellations'
 import type {
   CreateWineMapPayload,
-  WineAppellationOption,
-  WineCountryOption,
   WineMapAdminRecord,
   WineMapAreaRecord,
   WineMapAreaUpdatePayload,
   WineMapDefinitionRecord,
   WineMapDefinitionUpdatePayload,
   WineMapDto,
-  WineRegionOption,
 } from '@/types/wineMaps'
+import type { WineCountryRecord } from '@/types/wineCountries'
+import type { WineRegionRecord } from '@/types/wineRegions'
+import type { WineAppellationRecord } from '@/types/wineAppellations'
 
 export const useWineMapsStore = defineStore('wineMaps', () => {
   const maps = ref<WineMapDefinitionRecord[]>([])
@@ -35,9 +34,9 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
   const adminMap = ref<WineMapAdminRecord | null>(null)
   const selectedAreaId = ref<string | null>(null)
 
-  const countries = ref<WineCountryOption[]>([])
-  const regions = ref<WineRegionOption[]>([])
-  const appellations = ref<WineAppellationOption[]>([])
+  const countries = ref<WineCountryRecord[]>([])
+  const regions = ref<WineRegionRecord[]>([])
+  const appellations = ref<WineAppellationRecord[]>([])
 
   const loading = ref(false)
 
@@ -90,9 +89,9 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
 
   async function loadTargetOptions() {
     const [countryData, regionData, appellationData] = await Promise.all([
-      listWineCountries(),
-      listWineRegions(),
-      listWineAppellations(),
+      fetchWineCountries(),
+      fetchWineRegions(),
+      fetchWineAppellations(),
     ])
 
     countries.value = countryData

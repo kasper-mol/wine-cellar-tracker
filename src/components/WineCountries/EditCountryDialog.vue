@@ -11,20 +11,23 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import ImageUploader from '@/components/ImageUploader.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useFeedback } from '@/composables/useFeedback'
 
 const props = defineProps<{ countryId: string | null }>()
 
 const wineCountriesStore = useWineCountriesStore()
+const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const isUpdating = ref(false)
-const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
 const editForm = reactive({
   name: '',
   code: '',
   imageFile: null as File | null,
   currentImageUrl: '' as string | null,
 })
+
 const selectedCountry = computed(
   () => wineCountriesStore.countries.find((country) => country.id === props.countryId) ?? null,
 )
@@ -40,16 +43,15 @@ watch(
   { immediate: true },
 )
 
-// Dialog open state
 const open = ref(false)
 function openDialog() {
   open.value = true
 }
 function closeDialog() {
   open.value = false
+  clearFeedback()
 }
 
-// Expose function so parent can call it
 defineExpose({ openDialog })
 
 function normalizeCode(value: string) {
@@ -60,11 +62,12 @@ async function handleUpdate() {
   if (!selectedCountry.value) return
   const name = editForm.name.trim()
   if (!name) {
-    feedback.value = { type: 'error', message: 'Country name is required.' }
+    setError(null, 'Country name is required.')
     return
   }
+
   isUpdating.value = true
-  feedback.value = null
+  clearFeedback()
 
   try {
     await wineCountriesStore.update(selectedCountry.value.id, {
@@ -72,13 +75,10 @@ async function handleUpdate() {
       code: normalizeCode(editForm.code) || null,
       imageFile: editForm.imageFile,
     })
-    feedback.value = { type: 'success', message: 'Country updated successfully.' }
+    setSuccess('Country updated successfully.')
     closeDialog()
   } catch (error) {
-    feedback.value = {
-      type: 'error',
-      message: (error as Error).message || 'Failed to update country.',
-    }
+    setError(error, 'Failed to update country.')
   } finally {
     isUpdating.value = false
   }
@@ -107,15 +107,16 @@ async function handleUpdate() {
             v-model="editForm.imageFile"
             :label="editForm.currentImageUrl ? 'Change Country Image' : 'Country Image (optional)'"
           />
-          <div v-if="editForm.currentImageUrl && !editForm.imageFile" class="pt-2 space-y-1">
+          <div v-if="editForm.currentImageUrl && !editForm.imageFile" class="space-y-1 pt-2">
             <Label>Current Image</Label>
             <img
               :src="editForm.currentImageUrl"
               alt="Current Country Image"
-              class="w-32 h-32 rounded-md border object-cover"
+              class="h-32 w-32 rounded-md border object-cover"
             />
           </div>
         </div>
+        <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
           <Button type="submit" :disabled="isUpdating">{{
             isUpdating ? 'Saving…' : 'Save'

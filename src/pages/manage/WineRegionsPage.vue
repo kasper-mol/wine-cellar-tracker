@@ -4,22 +4,19 @@ import { storeToRefs } from 'pinia'
 import WineRegionsTable from '@/components/WineRegions/WineRegionsTable.vue'
 import CreateRegionDialog from '@/components/WineRegions/CreateRegionDialog.vue'
 import EditRegionDialog from '@/components/WineRegions/EditRegionDialog.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useFeedback } from '@/composables/useFeedback'
 
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const { regions } = storeToRefs(wineRegionsStore)
+const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const selectedRegionId = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
-const feedback = ref<{ type: 'success' | 'error'; message: string } | null>(null)
-
 const editDialogRef = ref<InstanceType<typeof EditRegionDialog> | null>(null)
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback
-}
 
 onMounted(async () => {
   await wineCountriesStore.loadAll()
@@ -36,16 +33,14 @@ async function handleDelete(id: string) {
   if (!confirmed) return
 
   deletingId.value = id
-  feedback.value = null
+  clearFeedback()
 
   try {
     await wineRegionsStore.remove(id)
-    if (selectedRegionId.value === id) {
-      selectedRegionId.value = regions.value[0]?.id ?? null
-    }
-    feedback.value = { type: 'success', message: 'Region removed.' }
+    if (selectedRegionId.value === id) selectedRegionId.value = regions.value[0]?.id ?? null
+    setSuccess('Region removed.')
   } catch (error) {
-    feedback.value = { type: 'error', message: getErrorMessage(error, 'Failed to delete region.') }
+    setError(error, 'Failed to delete region.')
   } finally {
     deletingId.value = null
   }
@@ -59,7 +54,6 @@ function openEditDialog(id: string) {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <p class="text-sm uppercase tracking-wide text-muted-foreground">Wine regions</p>
@@ -74,18 +68,7 @@ function openEditDialog(id: string) {
     </div>
 
     <WineRegionsTable @editRegion="openEditDialog($event)" @deleteRegion="handleDelete($event)" />
-
-    <div
-      v-if="feedback"
-      :class="[
-        'rounded-lg border px-4 py-3 text-sm',
-        feedback.type === 'success'
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/30 dark:text-emerald-300'
-          : 'border-destructive/40 bg-destructive/10 text-destructive',
-      ]"
-    >
-      {{ feedback.message }}
-    </div>
+    <FeedbackBanner :feedback="feedback" />
 
     <EditRegionDialog ref="editDialogRef" :region-id="selectedRegionId" />
   </div>

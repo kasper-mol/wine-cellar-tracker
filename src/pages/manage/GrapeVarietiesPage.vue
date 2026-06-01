@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-
+import { storeToRefs } from 'pinia'
 import GrapeVarietiesTable from '@/components/GrapeVarieties/GrapeVarietiesTable.vue'
 import CreateGrapeDialog from '@/components/GrapeVarieties/CreateGrapeDialog.vue'
 import EditGrapeDialog from '@/components/GrapeVarieties/EditGrapeDialog.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
-import { storeToRefs } from 'pinia'
+import { useFeedback } from '@/composables/useFeedback'
+
+const grapeVarietiesStore = useWineGrapeVarietiesStore()
+const { grapeVarieties } = storeToRefs(grapeVarietiesStore)
+const { feedback, setSuccess, setError } = useFeedback()
 
 const selectedGrapeId = ref<string | null>(null)
 const editDialogRef = ref<InstanceType<typeof EditGrapeDialog> | null>(null)
-const wineGeographyStore = useWineGrapeVarietiesStore()
-
-const grapeVarietiesStore = useWineGrapeVarietiesStore()
-
-const { grapeVarieties } = storeToRefs(grapeVarietiesStore)
 
 onMounted(() => {
-  wineGeographyStore.loadAll()
+  grapeVarietiesStore.loadAll()
 })
 
 function openEditDialog(id: string) {
@@ -25,15 +25,20 @@ function openEditDialog(id: string) {
 }
 
 async function handleDelete(id: string) {
-  const selectedGrape = grapeVarieties.value.find((grape) => grape.id === id)
+  const grape = grapeVarieties.value.find((g) => g.id === id)
   const confirmed = window.confirm(
-    selectedGrape
-      ? `Delete ${selectedGrape.name}? This action cannot be undone.`
-      : 'Delete this country? This action cannot be undone.',
+    grape
+      ? `Delete ${grape.name}? This action cannot be undone.`
+      : 'Delete this grape variety? This action cannot be undone.',
   )
   if (!confirmed) return
 
-  await wineGeographyStore.remove(id)
+  try {
+    await grapeVarietiesStore.remove(id)
+    setSuccess('Grape variety removed.')
+  } catch (error) {
+    setError(error, 'Failed to delete grape variety.')
+  }
 }
 </script>
 
@@ -49,7 +54,8 @@ async function handleDelete(id: string) {
       </div>
     </div>
 
-    <GrapeVarietiesTable ref="table" @edit-grape="openEditDialog" @delete-grape="handleDelete" />
+    <GrapeVarietiesTable @edit-grape="openEditDialog" @delete-grape="handleDelete" />
+    <FeedbackBanner :feedback="feedback" />
 
     <EditGrapeDialog ref="editDialogRef" :grapeId="selectedGrapeId" />
   </div>

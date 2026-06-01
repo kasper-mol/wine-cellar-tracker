@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import { getSupabaseClient, initializeSupabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import MenuBar from './components/MenuBar.vue'
 
 const supabaseReady = ref(false)
 const supabaseWarning = ref<string | null>(null)
 
 onMounted(() => {
-  initializeSupabase()
-
   try {
     getSupabaseClient()
     supabaseReady.value = true

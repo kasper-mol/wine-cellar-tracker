@@ -1,12 +1,9 @@
-// src/services/wineMaps.ts
-import type { PostgrestError } from '@supabase/supabase-js'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, throwIfError } from '@/lib/supabase'
+import { fetchSvgText, extractSvgAreaKeys, normalizeSvgKey } from '@/lib/svgUtils'
 import type {
   CreateWineMapPayload,
   ImportWineMapAreasResult,
   ResolvedWineMapAreaResult,
-  WineAppellationOption,
-  WineCountryOption,
   WineMapAdminRecord,
   WineMapAreaDto,
   WineMapAreaRecord,
@@ -15,12 +12,7 @@ import type {
   WineMapDefinitionRecord,
   WineMapDefinitionUpdatePayload,
   WineMapDto,
-  WineRegionOption,
 } from '@/types/wineMaps'
-
-function throwIfError(error: PostgrestError | null) {
-  if (error) throw new Error(error.message)
-}
 
 function toWineMapAreaDto(area: WineMapAreaRecord): WineMapAreaDto {
   return {
@@ -39,115 +31,47 @@ function toWineMapAreaDto(area: WineMapAreaRecord): WineMapAreaDto {
   }
 }
 
-function normalizeSvgKey(value: string) {
-  return value.trim().toLowerCase()
-}
-
-function isGenericSvgId(value: string) {
-  const normalized = normalizeSvgKey(value)
-  return /^layer\d+$/.test(normalized) || /^path\d+$/.test(normalized) || /^g\d+$/.test(normalized)
-}
-
-function pickSvgAreaKey(el: Element): string | null {
-  const label = el.getAttribute('inkscape:label') || el.getAttribute('label')
-  const id = el.getAttribute('id')
-
-  if (label && normalizeSvgKey(label).length > 0) {
-    return normalizeSvgKey(label)
-  }
-
-  if (id && normalizeSvgKey(id).length > 0 && !isGenericSvgId(id)) {
-    return normalizeSvgKey(id)
-  }
-
-  return null
-}
-
-async function fetchSvgText(svgAssetPath: string) {
-  const response = await fetch(svgAssetPath)
-  if (!response.ok) {
-    throw new Error(`Failed to load SVG from ${svgAssetPath}`)
-  }
-  return response.text()
-}
-
-function extractSvgAreaKeys(svgText: string): string[] {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(svgText, 'image/svg+xml')
-
-  const allElements = Array.from(doc.querySelectorAll('*'))
-  const keys = new Set<string>()
-
-  for (const el of allElements) {
-    const groupMode = el.getAttribute('inkscape:groupmode')
-    const hasLabel = Boolean(el.getAttribute('inkscape:label') || el.getAttribute('label'))
-    const tag = el.tagName.toLowerCase()
-
-    const isLayer = groupMode === 'layer' && hasLabel
-    const isDirectShape = ['path', 'polygon', 'rect', 'circle', 'ellipse'].includes(tag)
-
-    if (!isLayer && !isDirectShape) continue
-
-    const key = pickSvgAreaKey(el)
-    if (!key) continue
-
-    keys.add(key)
-  }
-
-  return Array.from(keys).sort((a, b) => a.localeCompare(b))
-}
-
 /* ----------------------------- MAPS ----------------------------- */
 
 export async function listWineMaps() {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client.from('wine_map_definitions').select('*').order('name')
-
+  const db = getSupabaseClient()
+  const { data, error } = await db.from('wine_map_definitions').select('*').order('name')
   throwIfError(error)
   return (data ?? []) as WineMapDefinitionRecord[]
 }
 
 export async function getWineMapDefinitionByKey(key: string) {
   if (!key?.trim()) return null
-
-  const client = getSupabaseClient()
-
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('wine_map_definitions')
     .select('*')
     .eq('key', key)
     .eq('is_active', true)
     .maybeSingle()
-
   throwIfError(error)
   return (data ?? null) as WineMapDefinitionRecord | null
 }
 
 export async function getWineMapAssetVersion(id: string) {
   if (!id?.trim()) return null
-
-  const client = getSupabaseClient()
-
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('wine_map_asset_versions')
     .select('*')
     .eq('id', id)
     .maybeSingle()
-
   throwIfError(error)
   return (data ?? null) as WineMapAssetVersionRecord | null
 }
 
 export async function listWineMapAreas(mapDefinitionId: string) {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('wine_map_area_mappings')
     .select('*')
     .eq('map_definition_id', mapDefinitionId)
     .order('svg_area_id')
-
   throwIfError(error)
   return (data ?? []) as WineMapAreaRecord[]
 }
@@ -175,16 +99,13 @@ export async function getWineMapByKey(key: string): Promise<WineMapDto | null> {
 
 export async function getWineMapsForCountry(countryId: string) {
   if (!countryId?.trim()) return []
-
-  const client = getSupabaseClient()
-
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('wine_map_definitions')
     .select('*')
     .eq('owner_wine_country_id', countryId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
-
   throwIfError(error)
   return (data ?? []) as WineMapDefinitionRecord[]
 }
@@ -192,36 +113,32 @@ export async function getWineMapsForCountry(countryId: string) {
 /* ----------------------------- ADMIN ----------------------------- */
 
 export async function getWineMapById(id: string): Promise<WineMapAdminRecord | null> {
-  const client = getSupabaseClient()
+  const db = getSupabaseClient()
 
-  const { data: mapDefinition, error: mapError } = await client
+  const { data: mapDefinition, error: mapError } = await db
     .from('wine_map_definitions')
     .select('*')
     .eq('id', id)
     .maybeSingle()
-
   throwIfError(mapError)
   if (!mapDefinition) return null
 
   let svgAssetPath: string | null = null
-
   if (mapDefinition.active_asset_version_id) {
-    const { data: assetVersion, error: assetError } = await client
+    const { data: assetVersion, error: assetError } = await db
       .from('wine_map_asset_versions')
       .select('*')
       .eq('id', mapDefinition.active_asset_version_id)
       .maybeSingle()
-
     throwIfError(assetError)
     svgAssetPath = assetVersion?.svg_asset_path ?? null
   }
 
-  const { data: areas, error: areasError } = await client
+  const { data: areas, error: areasError } = await db
     .from('wine_map_area_mappings')
     .select('*')
     .eq('map_definition_id', id)
     .order('svg_area_id')
-
   throwIfError(areasError)
 
   return {
@@ -232,9 +149,9 @@ export async function getWineMapById(id: string): Promise<WineMapAdminRecord | n
 }
 
 export async function createWineMap(payload: CreateWineMapPayload) {
-  const client = getSupabaseClient()
+  const db = getSupabaseClient()
 
-  const { data: mapDefinition, error: mapError } = await client
+  const { data: mapDefinition, error: mapError } = await db
     .from('wine_map_definitions')
     .insert({
       key: payload.key,
@@ -247,12 +164,11 @@ export async function createWineMap(payload: CreateWineMapPayload) {
     })
     .select('*')
     .single()
-
   throwIfError(mapError)
 
   const typedMap = mapDefinition as WineMapDefinitionRecord
 
-  const { data: assetVersion, error: assetError } = await client
+  const { data: assetVersion, error: assetError } = await db
     .from('wine_map_asset_versions')
     .insert({
       map_definition_id: typedMap.id,
@@ -262,53 +178,42 @@ export async function createWineMap(payload: CreateWineMapPayload) {
     })
     .select('*')
     .single()
-
   throwIfError(assetError)
 
   const typedAsset = assetVersion as WineMapAssetVersionRecord
 
-  const { error: updateError } = await client
+  const { error: updateError } = await db
     .from('wine_map_definitions')
-    .update({
-      active_asset_version_id: typedAsset.id,
-    })
+    .update({ active_asset_version_id: typedAsset.id })
     .eq('id', typedMap.id)
-
   throwIfError(updateError)
 
   return {
-    map: {
-      ...typedMap,
-      active_asset_version_id: typedAsset.id,
-    },
+    map: { ...typedMap, active_asset_version_id: typedAsset.id },
     assetVersion: typedAsset,
   }
 }
 
 export async function updateWineMapDefinition(id: string, payload: WineMapDefinitionUpdatePayload) {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('wine_map_definitions')
     .update(payload)
     .eq('id', id)
     .select('*')
     .single()
-
   throwIfError(error)
   return data as WineMapDefinitionRecord
 }
 
 export async function updateWineMapArea(id: string, payload: WineMapAreaUpdatePayload) {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client
+  const db = getSupabaseClient()
+  const { data, error } = await db
     .from('wine_map_area_mappings')
     .update(payload)
     .eq('id', id)
     .select('*')
     .single()
-
   throwIfError(error)
   return data as WineMapAreaRecord
 }
@@ -316,31 +221,20 @@ export async function updateWineMapArea(id: string, payload: WineMapAreaUpdatePa
 export async function importWineMapAreas(
   mapDefinitionId: string,
 ): Promise<ImportWineMapAreasResult> {
-  const client = getSupabaseClient()
+  const db = getSupabaseClient()
 
   const map = await getWineMapById(mapDefinitionId)
-  if (!map) {
-    throw new Error('Wine map not found')
-  }
-
-  if (!map.svgAssetPath) {
-    throw new Error('Wine map has no active SVG path')
-  }
+  if (!map) throw new Error('Wine map not found')
+  if (!map.svgAssetPath) throw new Error('Wine map has no active SVG path')
 
   const svgText = await fetchSvgText(map.svgAssetPath)
   const importedKeys = extractSvgAreaKeys(svgText)
 
   if (!importedKeys.length) {
-    return {
-      importedKeys: [],
-      createdCount: 0,
-      existingCount: 0,
-      totalCount: 0,
-    }
+    return { importedKeys: [], createdCount: 0, existingCount: 0, totalCount: 0 }
   }
 
   const existingByKey = new Map(map.areas.map((area) => [normalizeSvgKey(area.svg_area_id), area]))
-
   const toInsert = importedKeys
     .filter((key) => !existingByKey.has(key))
     .map((key) => ({
@@ -357,7 +251,7 @@ export async function importWineMapAreas(
     }))
 
   if (toInsert.length) {
-    const { error } = await client.from('wine_map_area_mappings').insert(toInsert)
+    const { error } = await db.from('wine_map_area_mappings').insert(toInsert)
     throwIfError(error)
   }
 
@@ -369,68 +263,27 @@ export async function importWineMapAreas(
   }
 }
 
-/* ----------------------------- TARGETS ----------------------------- */
-
-export async function listWineCountries() {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client.from('wine_countries').select('id, name').order('name')
-
-  throwIfError(error)
-  return (data ?? []) as WineCountryOption[]
-}
-
-export async function listWineRegions() {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client.from('wine_regions').select('id, name').order('name')
-
-  throwIfError(error)
-  return (data ?? []) as WineRegionOption[]
-}
-
-export async function listWineAppellations() {
-  const client = getSupabaseClient()
-
-  const { data, error } = await client.from('wine_appellations').select('id, name').order('name')
-
-  throwIfError(error)
-  return (data ?? []) as WineAppellationOption[]
-}
-
 /* ----------------------------- AREA RESOLUTION ----------------------------- */
 
 export async function resolveWineMapArea(
   mapKey: string,
   svgAreaId: string,
 ): Promise<ResolvedWineMapAreaResult> {
-  const client = getSupabaseClient()
+  const db = getSupabaseClient()
 
   const mapDefinition = await getWineMapDefinitionByKey(mapKey)
-  if (!mapDefinition) {
-    return {
-      resolved: false,
-      reason: 'Map not found',
-    }
-  }
+  if (!mapDefinition) return { resolved: false, reason: 'Map not found' }
 
-  const { data: area, error: areaError } = await client
+  const { data: area, error: areaError } = await db
     .from('wine_map_area_mappings')
     .select('*')
     .eq('map_definition_id', mapDefinition.id)
     .eq('svg_area_id', normalizeSvgKey(svgAreaId))
     .maybeSingle()
-
   throwIfError(areaError)
 
   const typedArea = area as WineMapAreaRecord | null
-
-  if (!typedArea) {
-    return {
-      resolved: false,
-      reason: 'Area not found',
-    }
-  }
+  if (!typedArea) return { resolved: false, reason: 'Area not found' }
 
   if (!typedArea.is_clickable || typedArea.is_decorative) {
     return {
@@ -446,99 +299,38 @@ export async function resolveWineMapArea(
     }
   }
 
-  if (typedArea.target_wine_region_id) {
-    const { data: target, error } = await client
-      .from('wine_regions')
-      .select('id, name')
-      .eq('id', typedArea.target_wine_region_id)
-      .maybeSingle()
-
-    throwIfError(error)
-
-    return {
-      resolved: Boolean(target),
-      area: {
-        id: typedArea.id,
-        svgAreaId: typedArea.svg_area_id,
-        label: typedArea.label,
-        isClickable: typedArea.is_clickable,
-        isDecorative: typedArea.is_decorative,
-      },
-      target: target
-        ? {
-            type: 'region',
-            id: target.id,
-            name: target.name,
-          }
-        : null,
-    }
+  const areaBase = {
+    id: typedArea.id,
+    svgAreaId: typedArea.svg_area_id,
+    label: typedArea.label,
+    isClickable: typedArea.is_clickable,
+    isDecorative: typedArea.is_decorative,
   }
 
-  if (typedArea.target_wine_country_id) {
-    const { data: target, error } = await client
-      .from('wine_countries')
-      .select('id, name')
-      .eq('id', typedArea.target_wine_country_id)
-      .maybeSingle()
-
-    throwIfError(error)
-
-    return {
-      resolved: Boolean(target),
-      area: {
-        id: typedArea.id,
-        svgAreaId: typedArea.svg_area_id,
-        label: typedArea.label,
-        isClickable: typedArea.is_clickable,
-        isDecorative: typedArea.is_decorative,
-      },
-      target: target
+  const targetTable = typedArea.target_wine_region_id
+    ? { table: 'wine_regions', id: typedArea.target_wine_region_id, type: 'region' as const }
+    : typedArea.target_wine_country_id
+      ? { table: 'wine_countries', id: typedArea.target_wine_country_id, type: 'country' as const }
+      : typedArea.target_wine_appellation_id
         ? {
-            type: 'country',
-            id: target.id,
-            name: target.name,
+            table: 'wine_appellations',
+            id: typedArea.target_wine_appellation_id,
+            type: 'appellation' as const,
           }
-        : null,
-    }
-  }
+        : null
 
-  if (typedArea.target_wine_appellation_id) {
-    const { data: target, error } = await client
-      .from('wine_appellations')
-      .select('id, name')
-      .eq('id', typedArea.target_wine_appellation_id)
-      .maybeSingle()
+  if (!targetTable) return { resolved: false, reason: 'No target configured', area: areaBase }
 
-    throwIfError(error)
-
-    return {
-      resolved: Boolean(target),
-      area: {
-        id: typedArea.id,
-        svgAreaId: typedArea.svg_area_id,
-        label: typedArea.label,
-        isClickable: typedArea.is_clickable,
-        isDecorative: typedArea.is_decorative,
-      },
-      target: target
-        ? {
-            type: 'appellation',
-            id: target.id,
-            name: target.name,
-          }
-        : null,
-    }
-  }
+  const { data: target, error } = await db
+    .from(targetTable.table)
+    .select('id, name')
+    .eq('id', targetTable.id)
+    .maybeSingle()
+  throwIfError(error)
 
   return {
-    resolved: false,
-    reason: 'No target configured',
-    area: {
-      id: typedArea.id,
-      svgAreaId: typedArea.svg_area_id,
-      label: typedArea.label,
-      isClickable: typedArea.is_clickable,
-      isDecorative: typedArea.is_decorative,
-    },
+    resolved: Boolean(target),
+    area: areaBase,
+    target: target ? { type: targetTable.type, id: target.id, name: target.name } : null,
   }
 }
