@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 import DashboardPage from '@/pages/DashboardPage.vue'
-import SignUpPage from '@/pages/SignUpPage.vue'
+import LoginPage from '@/pages/LoginPage.vue'
 import CountriesPage from '@/pages/countries.vue'
 import RegionsPage from '@/pages/regions.vue'
 import AppellationsPage from '@/pages/appellations.vue'
@@ -9,7 +10,6 @@ import FlavorsPage from '@/pages/flavors.vue'
 import CountryDetailPage from '@/pages/country/[id].vue'
 import RegionDetailPage from '@/pages/region/[id].vue'
 import AppellationDetailPage from '@/pages/appellation/[id].vue'
-import UserManagementPage from '@/pages/manage/UserManagementPage.vue'
 import WineAppellationsPage from '@/pages/manage/WineAppellationsPage.vue'
 import WineCountriesPage from '@/pages/manage/WineCountriesPage.vue'
 import WineRegionsPage from '@/pages/manage/WineRegionsPage.vue'
@@ -24,57 +24,60 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/login',
+      name: 'login',
+      component: LoginPage,
+      meta: { public: true },
+    },
+    {
       path: '/',
       name: 'dashboard',
       component: DashboardPage,
     },
     {
-      path: '/signup',
-      name: 'signup',
-      component: SignUpPage,
-    },
-    {
       path: '/countries',
       name: 'countries',
       component: CountriesPage,
+      meta: { public: true },
     },
     {
       path: '/regions',
       name: 'regions',
       component: RegionsPage,
+      meta: { public: true },
     },
     {
       path: '/appellations',
       name: 'appellations',
       component: AppellationsPage,
+      meta: { public: true },
     },
     {
       path: '/flavors',
       name: 'flavors',
       component: FlavorsPage,
+      meta: { public: true },
     },
     {
       path: '/country/:id',
       name: 'country-detail',
       component: CountryDetailPage,
       props: true,
+      meta: { public: true },
     },
     {
       path: '/region/:id',
       name: 'region-detail',
       component: RegionDetailPage,
       props: true,
+      meta: { public: true },
     },
     {
       path: '/appellation/:id',
       name: 'appellation-detail',
       component: AppellationDetailPage,
       props: true,
-    },
-    {
-      path: '/users',
-      name: 'user-management',
-      component: UserManagementPage,
+      meta: { public: true },
     },
     {
       path: '/manage/wine-countries',
@@ -96,7 +99,6 @@ const router = createRouter({
       name: 'wine-appellations',
       component: WineAppellationsPage,
     },
-
     {
       path: '/manage/vintage-ratings',
       component: VintageRatingsManage,
@@ -122,6 +124,23 @@ const router = createRouter({
       props: true,
     },
   ],
+})
+
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+
+  // Wait until auth is resolved before making decisions
+  if (authStore.isLoading) return true
+
+  const isPublic = to.meta.public === true
+  if (!isPublic && !authStore.isLoggedIn) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  // Already logged in and trying to visit login page
+  if (to.name === 'login' && authStore.isLoggedIn) {
+    return { name: 'dashboard' }
+  }
 })
 
 export default router

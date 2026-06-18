@@ -2,15 +2,16 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import { getSupabaseClient } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/auth'
 import MenuBar from './components/MenuBar.vue'
 
-const supabaseReady = ref(false)
 const supabaseWarning = ref<string | null>(null)
+const authStore = useAuthStore()
 
 onMounted(() => {
   try {
     getSupabaseClient()
-    supabaseReady.value = true
+    authStore.init()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Supabase configuration missing.'
     supabaseWarning.value = message
@@ -34,10 +35,7 @@ onMounted(() => {
         {{ supabaseWarning }}
       </div>
 
-      <RouterView v-if="supabaseReady" />
-      <div v-else class="rounded-xl border bg-card p-8 text-center text-muted-foreground">
-        Connecting to Supabase...
-      </div>
+      <RouterView v-if="!supabaseWarning" />
     </main>
   </div>
 </template>

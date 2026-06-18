@@ -1,13 +1,22 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import {
   Menubar,
   MenubarContent,
   MenubarItem,
   MenubarMenu,
+  MenubarSeparator,
   MenubarTrigger,
 } from '@/components/ui/menubar'
+import { useAuthStore } from '@/stores/auth'
 
-import { RouterLink } from 'vue-router'
+const authStore = useAuthStore()
+const router = useRouter()
+
+async function handleSignOut() {
+  await authStore.signOut()
+  router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -41,111 +50,55 @@ import { RouterLink } from 'vue-router'
       >
         <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Flavors</span>
       </RouterLink>
-      <MenubarTrigger class="rounded-md px-3 py-1.5 transition hover:bg-muted">
-        Manage
-      </MenubarTrigger>
-      <MenubarContent>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/signup"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">Sign up</span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/users"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'"
-              >Manage users</span
+      <MenubarMenu v-if="authStore.isAdmin">
+        <MenubarTrigger class="rounded-md px-3 py-1.5 transition hover:bg-muted">
+          Manage
+        </MenubarTrigger>
+        <MenubarContent>
+          <MenubarItem>
+            <RouterLink to="/manage/wine-countries" class="w-full">Wine countries</RouterLink>
+          </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/wine-regions" class="w-full">Wine regions</RouterLink>
+          </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/wine-appellations" class="w-full">Appellations</RouterLink>
+          </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/grape-varieties" class="w-full">Grape varieties</RouterLink>
+          </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/vintage-ratings" class="w-full">Vintage ratings</RouterLink>
+          </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/flavor-descriptors" class="w-full"
+              >Flavor descriptors</RouterLink
             >
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/wine-countries"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Wine countries
-            </span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/wine-regions"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Wine regions
-            </span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/wine-appellations"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Appellations
-            </span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/grape-varieties"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Grape varieties
-            </span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/wine-definitions"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Wine definitions
-            </span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/vintage-ratings"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Vintage ratings
-            </span>
-          </RouterLink>
-        </MenubarItem>
-        <MenubarItem>
-          <RouterLink
-            v-slot="{ isActive }"
-            to="/manage/flavor-descriptors"
-            class="rounded-md px-3 py-1.5 transition hover:bg-muted"
-          >
-            <span :class="isActive ? 'text-foreground' : 'text-muted-foreground'">
-              Flavor descriptors
-            </span>
-          </RouterLink>
-        </MenubarItem>
-      </MenubarContent>
+          </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/wine-maps" class="w-full">Wine maps</RouterLink>
+          </MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+      <MenubarMenu v-if="authStore.isLoggedIn">
+        <MenubarTrigger class="rounded-md px-3 py-1.5 transition hover:bg-muted">
+          {{ authStore.displayName ?? 'Account' }}
+        </MenubarTrigger>
+        <MenubarContent>
+          <MenubarItem disabled class="text-xs text-muted-foreground">
+            {{ authStore.user?.email }}
+          </MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem @click="handleSignOut">Sign out</MenubarItem>
+        </MenubarContent>
+      </MenubarMenu>
+      <RouterLink
+        v-else
+        to="/login"
+        class="rounded-md px-3 py-1.5 text-sm transition hover:bg-muted"
+      >
+        Sign in
+      </RouterLink>
     </MenubarMenu>
   </Menubar>
-
-  <nav class="flex flex-wrap items-center gap-2 text-sm font-medium"></nav>
 </template>
-s
