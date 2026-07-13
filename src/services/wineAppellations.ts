@@ -35,6 +35,41 @@ export async function fetchWineAppellations() {
   return (data ?? []) as unknown as WineAppellationRecord[]
 }
 
+const LEAN_SELECT = 'id, name, region_id, region:wine_regions(id, name, country_id)'
+
+/** Lean fetch by region — no grapes join, used by mappings page. */
+export async function fetchAppellationsByRegion(regionId: string) {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_appellations')
+    .select(LEAN_SELECT)
+    .eq('region_id', regionId)
+    .order('name')
+  throwIfError(error)
+  return (data ?? []) as unknown as Pick<WineAppellationRecord, 'id' | 'name' | 'region_id' | 'region'>[]
+}
+
+/** Lean fetch by country — resolves region IDs first, then filters. No grapes join. */
+export async function fetchAppellationsByCountry(countryId: string) {
+  const db = getSupabaseClient()
+  // Step 1: get region IDs for this country
+  const { data: regionRows, error: regionError } = await db
+    .from('wine_regions')
+    .select('id')
+    .eq('country_id', countryId)
+  throwIfError(regionError)
+  const regionIds = (regionRows ?? []).map((r: { id: string }) => r.id)
+  if (regionIds.length === 0) return []
+  // Step 2: fetch appellations in those regions
+  const { data, error } = await db
+    .from('wine_appellations')
+    .select(LEAN_SELECT)
+    .in('region_id', regionIds)
+    .order('name')
+  throwIfError(error)
+  return (data ?? []) as unknown as Pick<WineAppellationRecord, 'id' | 'name' | 'region_id' | 'region'>[]
+}
+
 export async function createWineAppellation(payload: WineAppellationCreatePayload) {
   const db = getSupabaseClient()
   const { data: created, error } = await db

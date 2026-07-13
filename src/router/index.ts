@@ -19,6 +19,12 @@ import VintageRatingBatch from '@/pages/manage/VintageRatingBatch.vue'
 import FlavorDescriptorsPage from '@/pages/manage/FlavorDescriptorsPage.vue'
 import WineMapManagePage from '@/pages/manage/winemaps/[id].vue'
 import WineMapsPage from '@/pages/manage/winemaps/index.vue'
+import DrinkingWindowIndex from '@/pages/manage/drinking-window/index.vue'
+import DrinkingWindowArchetypes from '@/pages/manage/drinking-window/archetypes.vue'
+import DrinkingWindowMappings from '@/pages/manage/drinking-window/mappings.vue'
+import DrinkingWindowProducers from '@/pages/manage/drinking-window/producers.vue'
+import DrinkingWindowHotVintages from '@/pages/manage/drinking-window/hot-vintages.vue'
+import DrinkingWindowSettings from '@/pages/manage/drinking-window/settings.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -116,6 +122,36 @@ const router = createRouter({
       path: '/manage/wine-maps',
       name: 'wine-maps',
       component: WineMapsPage,
+    },
+    {
+      path: '/manage/drinking-window',
+      name: 'drinking-window',
+      component: DrinkingWindowIndex,
+    },
+    {
+      path: '/manage/drinking-window/archetypes',
+      name: 'dw-archetypes',
+      component: DrinkingWindowArchetypes,
+    },
+    {
+      path: '/manage/drinking-window/mappings',
+      name: 'dw-mappings',
+      component: DrinkingWindowMappings,
+    },
+    {
+      path: '/manage/drinking-window/producers',
+      name: 'dw-producers',
+      component: DrinkingWindowProducers,
+    },
+    {
+      path: '/manage/drinking-window/hot-vintages',
+      name: 'dw-hot-vintages',
+      component: DrinkingWindowHotVintages,
+    },
+    {
+      path: '/manage/drinking-window/settings',
+      name: 'dw-settings',
+      component: DrinkingWindowSettings,
     },
     {
       path: '/manage/wine-maps/:id',

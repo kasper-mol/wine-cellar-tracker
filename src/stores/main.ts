@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { UserWine } from '@/types/wines'
+import type { UserWine, WineCreatePayload, WineUpdatePayload } from '@/types/wines'
 import { wineRecordToUserWine } from '@/types/wines'
-import { fetchUserWines } from '@/services/wines'
+import { fetchUserWines, createWine, updateWine, deleteWine } from '@/services/wines'
+import type { DrinkBottlePayload } from '@/types/consumption'
+import { drinkBottle as drinkBottleService } from '@/services/consumption'
 
 export const useMainStore = defineStore('main', () => {
   const userWines = ref<UserWine[]>([])
@@ -22,9 +24,46 @@ export const useMainStore = defineStore('main', () => {
     }
   }
 
+  async function addWine(payload: WineCreatePayload) {
+    const record = await createWine(payload)
+    userWines.value = [wineRecordToUserWine(record), ...userWines.value]
+    return record
+  }
+
+  async function editWine(id: string, payload: WineUpdatePayload) {
+    const record = await updateWine(id, payload)
+    const updated = wineRecordToUserWine(record)
+    userWines.value = userWines.value.map((wine) => (wine.id === id ? updated : wine))
+    return record
+  }
+
+  async function removeWine(id: string) {
+    await deleteWine(id)
+    userWines.value = userWines.value.filter((wine) => wine.id !== id)
+  }
+
+  async function drinkBottle(payload: DrinkBottlePayload) {
+    // Atomic insert-event + decrement on the server; returns the new stock count.
+    const newQuantity = await drinkBottleService(payload)
+    userWines.value = userWines.value.map((wine) =>
+      wine.id === payload.wineId ? { ...wine, quantity: newQuantity } : wine,
+    )
+    return newQuantity
+  }
+
   function clearWines() {
     userWines.value = []
   }
 
-  return { userWines, isLoading, totalBottleCount, loadWines, clearWines }
+  return {
+    userWines,
+    isLoading,
+    totalBottleCount,
+    loadWines,
+    addWine,
+    editWine,
+    removeWine,
+    drinkBottle,
+    clearWines,
+  }
 })

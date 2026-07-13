@@ -118,10 +118,15 @@ export interface CreateWineMapPayload {
   key: string
   name: string
   scope: WineMapScope
-  svgAssetPath: string
   owner_wine_country_id?: string | null
   owner_wine_region_id?: string | null
   owner_wine_appellation_id?: string | null
+}
+
+/** Result of uploading a new SVG version and making it the active asset. */
+export interface ReplaceWineMapAssetResult {
+  assetVersion: WineMapAssetVersionRecord
+  svgAssetPath: string
 }
 
 export interface ResolvedWineMapAreaResult {

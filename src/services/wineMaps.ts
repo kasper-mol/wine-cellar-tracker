@@ -1,8 +1,10 @@
 import { getSupabaseClient, throwIfError } from '@/lib/supabase'
 import { fetchSvgText, extractSvgAreaKeys, normalizeSvgKey } from '@/lib/svgUtils'
+import { uploadWineMapSvg, safeAssetName, fileChecksum } from '@/lib/storage'
 import type {
   CreateWineMapPayload,
   ImportWineMapAreasResult,
+  ReplaceWineMapAssetResult,
   ResolvedWineMapAreaResult,
   WineMapAdminRecord,
   WineMapAreaDto,
@@ -13,6 +15,48 @@ import type {
   WineMapDefinitionUpdatePayload,
   WineMapDto,
 } from '@/types/wineMaps'
+
+type SupabaseDb = ReturnType<typeof getSupabaseClient>
+
+/**
+ * Upload an SVG file as a new asset version and make it the map's active asset.
+ * Shared by createWineMap (v1) and replaceWineMapAsset (v2+).
+ */
+async function createActiveAssetVersion(
+  db: SupabaseDb,
+  mapDefinitionId: string,
+  pathPrefix: string,
+  versionNumber: number,
+  file: File,
+  notes: string | null,
+): Promise<ReplaceWineMapAssetResult> {
+  const path = `${pathPrefix}/v${versionNumber}-${safeAssetName(file.name)}`
+  const svgAssetPath = await uploadWineMapSvg(path, file)
+  const checksum = await fileChecksum(file)
+
+  const { data, error } = await db
+    .from('wine_map_asset_versions')
+    .insert({
+      map_definition_id: mapDefinitionId,
+      version_number: versionNumber,
+      svg_asset_path: svgAssetPath,
+      original_filename: file.name,
+      checksum,
+      notes,
+    })
+    .select('*')
+    .single()
+  throwIfError(error)
+  const assetVersion = data as WineMapAssetVersionRecord
+
+  const { error: updateError } = await db
+    .from('wine_map_definitions')
+    .update({ active_asset_version_id: assetVersion.id })
+    .eq('id', mapDefinitionId)
+  throwIfError(updateError)
+
+  return { assetVersion, svgAssetPath }
+}
 
 function toWineMapAreaDto(area: WineMapAreaRecord): WineMapAreaDto {
   return {
@@ -148,7 +192,7 @@ export async function getWineMapById(id: string): Promise<WineMapAdminRecord | n
   }
 }
 
-export async function createWineMap(payload: CreateWineMapPayload) {
+export async function createWineMap(payload: CreateWineMapPayload, file: File) {
   const db = getSupabaseClient()
 
   const { data: mapDefinition, error: mapError } = await db
@@ -168,30 +212,64 @@ export async function createWineMap(payload: CreateWineMapPayload) {
 
   const typedMap = mapDefinition as WineMapDefinitionRecord
 
-  const { data: assetVersion, error: assetError } = await db
-    .from('wine_map_asset_versions')
-    .insert({
-      map_definition_id: typedMap.id,
-      version_number: 1,
-      svg_asset_path: payload.svgAssetPath,
-      original_filename: payload.svgAssetPath.split('/').pop() ?? null,
-    })
-    .select('*')
-    .single()
-  throwIfError(assetError)
-
-  const typedAsset = assetVersion as WineMapAssetVersionRecord
-
-  const { error: updateError } = await db
-    .from('wine_map_definitions')
-    .update({ active_asset_version_id: typedAsset.id })
-    .eq('id', typedMap.id)
-  throwIfError(updateError)
+  const { assetVersion } = await createActiveAssetVersion(
+    db,
+    typedMap.id,
+    payload.key || typedMap.id,
+    1,
+    file,
+    null,
+  )
 
   return {
-    map: { ...typedMap, active_asset_version_id: typedAsset.id },
-    assetVersion: typedAsset,
+    map: { ...typedMap, active_asset_version_id: assetVersion.id },
+    assetVersion,
   }
+}
+
+/** Next version number for a map (max existing + 1, or 1 if none). */
+export async function getNextAssetVersion(mapDefinitionId: string): Promise<number> {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_asset_versions')
+    .select('version_number')
+    .eq('map_definition_id', mapDefinitionId)
+    .order('version_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  throwIfError(error)
+  return ((data?.version_number as number | undefined) ?? 0) + 1
+}
+
+/** Upload a new SVG version for an existing map and make it active. */
+export async function replaceWineMapAsset(
+  mapDefinitionId: string,
+  mapKey: string | null,
+  file: File,
+  notes?: string | null,
+): Promise<ReplaceWineMapAssetResult> {
+  const db = getSupabaseClient()
+  const versionNumber = await getNextAssetVersion(mapDefinitionId)
+  return createActiveAssetVersion(
+    db,
+    mapDefinitionId,
+    mapKey || mapDefinitionId,
+    versionNumber,
+    file,
+    notes ?? null,
+  )
+}
+
+/** All asset versions for a map, newest first. */
+export async function listWineMapAssetVersions(mapDefinitionId: string) {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_asset_versions')
+    .select('*')
+    .eq('map_definition_id', mapDefinitionId)
+    .order('version_number', { ascending: false })
+  throwIfError(error)
+  return (data ?? []) as WineMapAssetVersionRecord[]
 }
 
 export async function updateWineMapDefinition(id: string, payload: WineMapDefinitionUpdatePayload) {
@@ -216,6 +294,12 @@ export async function updateWineMapArea(id: string, payload: WineMapAreaUpdatePa
     .single()
   throwIfError(error)
   return data as WineMapAreaRecord
+}
+
+export async function deleteWineMapArea(id: string): Promise<void> {
+  const db = getSupabaseClient()
+  const { error } = await db.from('wine_map_area_mappings').delete().eq('id', id)
+  throwIfError(error)
 }
 
 export async function importWineMapAreas(

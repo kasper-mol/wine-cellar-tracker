@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWineMapsStore } from '@/stores/wineMaps'
+import type { WineMapAreaRecord } from '@/types/wineMaps'
 
 const route = useRoute()
 const wineMapsStore = useWineMapsStore()
@@ -17,6 +19,13 @@ const saveMessage = ref<string | null>(null)
 const mapSaveMessage = ref<string | null>(null)
 const importMessage = ref<string | null>(null)
 const hoveredSvgAreaId = ref<string | null>(null)
+
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+const uploadNotes = ref('')
+const replacing = ref(false)
+const replaceMessage = ref<string | null>(null)
+const deletingAreaId = ref<string | null>(null)
 
 const mapForm = reactive({
   name: '',
@@ -45,6 +54,9 @@ const selectedArea = computed(() => wineMapsStore.selectedArea)
 const selectedSvgAreaId = computed(() => selectedArea.value?.svg_area_id ?? null)
 const visibleAreas = computed(() => adminMap.value?.areas ?? [])
 const interactiveAreas = computed(() => visibleAreas.value.filter((area) => !area.is_decorative))
+
+const assetVersions = computed(() => wineMapsStore.assetVersions)
+const activeAssetVersionId = computed(() => adminMap.value?.active_asset_version_id ?? null)
 
 function normalizeSvgKey(value: string) {
   return value.trim().toLowerCase()
@@ -297,6 +309,63 @@ async function importAreas() {
   }
 }
 
+function onFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  selectedFile.value = target.files?.[0] ?? null
+}
+
+async function uploadNewVersion() {
+  if (!adminMap.value || !selectedFile.value) return
+
+  replacing.value = true
+  replaceMessage.value = null
+
+  try {
+    const result = await wineMapsStore.replaceMapAsset(
+      selectedFile.value,
+      uploadNotes.value.trim() || null,
+    )
+
+    replaceMessage.value = `Uploaded v${result.assetVersion.version_number}. Now run “Import SVG areas”.`
+    selectedFile.value = null
+    uploadNotes.value = ''
+    if (fileInput.value) fileInput.value.value = ''
+
+    // Re-render the preview from the newly active SVG.
+    if (adminMap.value?.svgAssetPath) {
+      await fetchSvg(adminMap.value.svgAssetPath)
+      await nextTick()
+      applySvgBindings()
+    }
+  } catch (error) {
+    replaceMessage.value = error instanceof Error ? error.message : 'Upload failed'
+  } finally {
+    replacing.value = false
+  }
+}
+
+async function handleDeleteArea(area: WineMapAreaRecord) {
+  const label = area.label || area.svg_area_id
+  if (
+    !window.confirm(
+      `Delete area “${label}”? This removes its mapping. You can re-add it later via “Import SVG areas”.`,
+    )
+  ) {
+    return
+  }
+
+  deletingAreaId.value = area.id
+  try {
+    await wineMapsStore.deleteArea(area.id)
+    await nextTick()
+    applyAllAreaVisualStates()
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : 'Failed to delete area')
+  } finally {
+    deletingAreaId.value = null
+  }
+}
+
 async function saveSelectedArea() {
   if (!selectedArea.value) return
 
@@ -473,6 +542,75 @@ watch(
       </div>
     </div>
 
+    <div v-if="adminMap" class="rounded-xl border border-border bg-card p-6">
+      <div class="mb-4">
+        <h2 class="text-lg font-semibold text-foreground">SVG asset</h2>
+        <p class="text-sm text-muted-foreground">
+          Upload a new SVG to replace the current map. Previous versions are kept as history.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="space-y-1">
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >SVG file</label
+          >
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".svg,image/svg+xml"
+            class="block text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm"
+            @change="onFileChange"
+          />
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >Notes (optional)</label
+          >
+          <Input v-model="uploadNotes" placeholder="e.g. updated regions" />
+        </div>
+
+        <Button :disabled="replacing || !selectedFile" @click="uploadNewVersion">
+          {{ replacing ? 'Uploading...' : 'Upload new version' }}
+        </Button>
+
+        <span v-if="replaceMessage" class="text-sm text-muted-foreground">{{ replaceMessage }}</span>
+      </div>
+
+      <div v-if="assetVersions.length" class="mt-4 overflow-x-auto">
+        <table class="w-full min-w-[600px] border-collapse text-sm">
+          <thead>
+            <tr class="border-b text-left">
+              <th class="px-3 py-2 font-medium">Version</th>
+              <th class="px-3 py-2 font-medium">File</th>
+              <th class="px-3 py-2 font-medium">Notes</th>
+              <th class="px-3 py-2 font-medium">Created</th>
+              <th class="px-3 py-2 font-medium">Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="version in assetVersions" :key="version.id" class="border-b">
+              <td class="px-3 py-2 font-mono text-xs">v{{ version.version_number }}</td>
+              <td class="px-3 py-2">{{ version.original_filename || '—' }}</td>
+              <td class="px-3 py-2 text-muted-foreground">{{ version.notes || '—' }}</td>
+              <td class="px-3 py-2 text-muted-foreground">
+                {{ new Date(version.created_at).toLocaleDateString() }}
+              </td>
+              <td class="px-3 py-2">
+                <span
+                  v-if="version.id === activeAssetVersionId"
+                  class="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                  >Active</span
+                >
+                <span v-else class="text-muted-foreground">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div v-if="adminMap" class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_420px]">
       <div class="rounded-xl border border-border bg-card p-4">
         <div class="mb-4">
@@ -627,6 +765,7 @@ watch(
               <th class="px-3 py-2 font-medium">Country</th>
               <th class="px-3 py-2 font-medium">Region</th>
               <th class="px-3 py-2 font-medium">Appellation</th>
+              <th class="px-3 py-2 text-right font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -659,6 +798,18 @@ watch(
                     (item) => item.id === area.target_wine_appellation_id,
                   )?.name || '—'
                 }}
+              </td>
+              <td class="px-3 py-2 text-right">
+                <Button
+                  variant="ghost"
+                  class="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                  :disabled="deletingAreaId === area.id"
+                  title="Delete area"
+                  @click.stop="handleDeleteArea(area)"
+                >
+                  <Trash2 class="h-4 w-4" />
+                  <span class="sr-only">Delete {{ area.svg_area_id }}</span>
+                </Button>
               </td>
             </tr>
           </tbody>

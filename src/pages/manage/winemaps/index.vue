@@ -15,15 +15,22 @@ const creating = ref(false)
 const showCreateForm = ref(false)
 const createError = ref<string | null>(null)
 
+const fileInput = ref<HTMLInputElement | null>(null)
+const selectedFile = ref<File | null>(null)
+
 const form = reactive({
   name: '',
   key: '',
   scope: 'country' as 'country' | 'region' | 'appellation',
-  svgAssetPath: '/maps/',
   owner_wine_country_id: '',
   owner_wine_region_id: '',
   owner_wine_appellation_id: '',
 })
+
+function onFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  selectedFile.value = target.files?.[0] ?? null
+}
 
 function clearOwnerFieldsForScope() {
   if (form.scope === 'country') {
@@ -47,37 +54,45 @@ watch(
 
 function openMap(id: string) {
   router.push({
-    name: 'admin-wine-map-detail',
+    name: 'wine-map-manage',
     params: { id },
   })
 }
 
 async function createMap() {
+  if (!selectedFile.value) {
+    createError.value = 'Choose an SVG file for the map.'
+    return
+  }
+
   creating.value = true
   createError.value = null
 
   try {
-    const created = await wineMapsStore.addWineMap({
-      name: form.name.trim(),
-      key: form.key.trim(),
-      scope: form.scope,
-      svgAssetPath: form.svgAssetPath.trim(),
-      owner_wine_country_id: form.owner_wine_country_id || null,
-      owner_wine_region_id: form.owner_wine_region_id || null,
-      owner_wine_appellation_id: form.owner_wine_appellation_id || null,
-    })
+    const created = await wineMapsStore.addWineMap(
+      {
+        name: form.name.trim(),
+        key: form.key.trim(),
+        scope: form.scope,
+        owner_wine_country_id: form.owner_wine_country_id || null,
+        owner_wine_region_id: form.owner_wine_region_id || null,
+        owner_wine_appellation_id: form.owner_wine_appellation_id || null,
+      },
+      selectedFile.value,
+    )
 
     showCreateForm.value = false
     form.name = ''
     form.key = ''
     form.scope = 'country'
-    form.svgAssetPath = '/maps/'
     form.owner_wine_country_id = ''
     form.owner_wine_region_id = ''
     form.owner_wine_appellation_id = ''
+    selectedFile.value = null
+    if (fileInput.value) fileInput.value.value = ''
 
     router.push({
-      name: 'admin-wine-map-detail',
+      name: 'wine-map-manage',
       params: { id: created.map.id },
     })
   } catch (error: unknown) {
@@ -140,9 +155,15 @@ onMounted(async () => {
 
           <div class="space-y-1">
             <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >SVG path</label
+              >SVG file</label
             >
-            <Input v-model="form.svgAssetPath" placeholder="/maps/france.svg" />
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".svg,image/svg+xml"
+              class="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm"
+              @change="onFileChange"
+            />
           </div>
 
           <div v-if="form.scope === 'country'" class="space-y-1">
@@ -192,7 +213,8 @@ onMounted(async () => {
         </div>
 
         <p class="mt-3 text-xs text-muted-foreground">
-          The SVG file should already exist in your public maps folder.
+          The SVG is uploaded to Supabase Storage as version 1. You can replace it with newer
+          versions later from the map's page.
         </p>
 
         <div class="mt-4 flex items-center gap-3">

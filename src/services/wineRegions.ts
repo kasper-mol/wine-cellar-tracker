@@ -16,6 +16,18 @@ export async function fetchWineRegions() {
   return (data ?? []) as unknown as WineRegionRecord[]
 }
 
+/** Lean fetch filtered by country — no images, used by mappings page. */
+export async function fetchRegionsByCountry(countryId: string) {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_regions')
+    .select('id, name, country_id')
+    .eq('country_id', countryId)
+    .order('name')
+  throwIfError(error)
+  return (data ?? []) as Pick<WineRegionRecord, 'id' | 'name' | 'country_id'>[]
+}
+
 export async function createWineRegion(payload: WineRegionCreatePayload) {
   const db = getSupabaseClient()
   const { data: created, error } = await db

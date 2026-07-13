@@ -2,11 +2,14 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   createWineMap,
+  deleteWineMapArea,
   getWineMapById,
   getWineMapByKey,
   getWineMapsForCountry,
   importWineMapAreas,
   listWineMaps,
+  listWineMapAssetVersions,
+  replaceWineMapAsset,
   resolveWineMapArea,
   updateWineMapArea,
   updateWineMapDefinition,
@@ -19,6 +22,7 @@ import type {
   WineMapAdminRecord,
   WineMapAreaRecord,
   WineMapAreaUpdatePayload,
+  WineMapAssetVersionRecord,
   WineMapDefinitionRecord,
   WineMapDefinitionUpdatePayload,
   WineMapDto,
@@ -32,6 +36,7 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
   const currentMap = ref<WineMapDto | null>(null)
 
   const adminMap = ref<WineMapAdminRecord | null>(null)
+  const assetVersions = ref<WineMapAssetVersionRecord[]>([])
   const selectedAreaId = ref<string | null>(null)
 
   const countries = ref<WineCountryRecord[]>([])
@@ -81,6 +86,7 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     loading.value = true
     try {
       adminMap.value = await getWineMapById(id)
+      assetVersions.value = await listWineMapAssetVersions(id)
       selectedAreaId.value = null
     } finally {
       loading.value = false
@@ -99,13 +105,30 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     appellations.value = appellationData
   }
 
-  async function addWineMap(payload: CreateWineMapPayload) {
-    const created = await createWineMap(payload)
+  async function addWineMap(payload: CreateWineMapPayload, file: File) {
+    const created = await createWineMap(payload, file)
 
     maps.value.push(created.map)
     maps.value.sort((a, b) => a.name.localeCompare(b.name))
 
     return created
+  }
+
+  async function replaceMapAsset(file: File, notes?: string | null) {
+    if (!adminMap.value) throw new Error('No admin map loaded')
+
+    const result = await replaceWineMapAsset(
+      adminMap.value.id,
+      adminMap.value.key,
+      file,
+      notes ?? null,
+    )
+
+    // Refresh the admin map (new svgAssetPath + active version) and version history in place.
+    adminMap.value = await getWineMapById(adminMap.value.id)
+    assetVersions.value = await listWineMapAssetVersions(result.assetVersion.map_definition_id)
+
+    return result
   }
 
   async function saveMapDefinition(id: string, payload: WineMapDefinitionUpdatePayload) {
@@ -169,6 +192,17 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     return updated
   }
 
+  async function deleteArea(areaId: string) {
+    await deleteWineMapArea(areaId)
+
+    if (adminMap.value) {
+      adminMap.value.areas = adminMap.value.areas.filter((area) => area.id !== areaId)
+    }
+    if (selectedAreaId.value === areaId) {
+      selectedAreaId.value = null
+    }
+  }
+
   function clearCurrentMap() {
     currentMap.value = null
   }
@@ -177,6 +211,7 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     maps,
     currentMap,
     adminMap,
+    assetVersions,
     selectedAreaId,
     selectedArea,
     countries,
@@ -190,11 +225,13 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     loadAdminMap,
     loadTargetOptions,
     addWineMap,
+    replaceMapAsset,
     saveMapDefinition,
     importAreasForAdminMap,
     selectAreaByRowId,
     selectAreaBySvgAreaId,
     saveArea,
+    deleteArea,
     clearCurrentMap,
   }
 })

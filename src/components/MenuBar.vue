@@ -78,6 +78,9 @@ async function handleSignOut() {
           <MenubarItem>
             <RouterLink to="/manage/wine-maps" class="w-full">Wine maps</RouterLink>
           </MenubarItem>
+          <MenubarItem>
+            <RouterLink to="/manage/drinking-window" class="w-full">Drinking window</RouterLink>
+          </MenubarItem>
         </MenubarContent>
       </MenubarMenu>
       <MenubarMenu v-if="authStore.isLoggedIn">
