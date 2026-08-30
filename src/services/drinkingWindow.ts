@@ -11,6 +11,9 @@ import type {
   HotVintageCreatePayload,
   SettingsRecord,
   SettingsUpdatePayload,
+  CuveeRecord,
+  AbsoluteOverrideRecord,
+  ConditionFlagRecord,
 } from '@/types/drinkingWindow'
 
 /* ----------------------------- archetypes ----------------------------- */
@@ -146,6 +149,33 @@ export async function deleteHotVintage(id: string) {
   const db = getSupabaseClient()
   const { error } = await db.from('dw_hot_vintages').delete().eq('id', id)
   throwIfError(error)
+}
+
+/* -------------------------------- cuvées -------------------------------- */
+
+export async function fetchCuvees() {
+  const db = getSupabaseClient()
+  const { data, error } = await db.from('dw_cuvees').select('*')
+  throwIfError(error)
+  return (data ?? []) as CuveeRecord[]
+}
+
+/* -------------------------- absolute overrides -------------------------- */
+
+export async function fetchAbsoluteOverrides() {
+  const db = getSupabaseClient()
+  const { data, error } = await db.from('dw_absolute_overrides').select('*')
+  throwIfError(error)
+  return (data ?? []) as AbsoluteOverrideRecord[]
+}
+
+/* --------------------------- condition flags --------------------------- */
+
+export async function fetchConditionFlags() {
+  const db = getSupabaseClient()
+  const { data, error } = await db.from('dw_condition_flags').select('*')
+  throwIfError(error)
+  return (data ?? []) as ConditionFlagRecord[]
 }
 
 /* -------------------------------- settings -------------------------------- */

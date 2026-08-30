@@ -1,5 +1,20 @@
 export type WineStyle = 'red' | 'white' | 'rosé' | 'sparkling' | 'dessert'
 
+/* --- Structured intake fields that determine archetype selection ---
+ * Free-text at the DB layer (nullable); these unions document the expected
+ * values the engine understands. Anything else is treated as unset. */
+export type PredikatLevel =
+  | 'Kabinett'
+  | 'Spätlese'
+  | 'Auslese'
+  | 'BA'
+  | 'TBA'
+  | 'Eiswein'
+export type Sweetness = 'Sec' | 'Demi-Sec' | 'Moelleux' | 'Doux'
+export type JuraStyle = 'ouille' | 'sousvoile'
+export type FriuliStyle = 'skinContact' | 'conventional'
+export type ChampagneType = 'nv' | 'vintage'
+
 /** Minimal embedded reference to a region/appellation (id + display name) */
 export interface AppellationRef {
   id: string
@@ -27,6 +42,14 @@ export interface WineRecord {
   /** FK ids */
   region: string | null
   appellation: string | null
+  /** Structured intake fields (drive archetype selection; see engine) */
+  cuvee: string | null
+  predikat_level: string | null
+  sweetness: string | null
+  jura_style: string | null
+  friuli_style: string | null
+  champagne_type: string | null
+  disgorgement_date: string | null
   /** Embedded related rows (joined in fetchUserWines) */
   region_info?: AppellationRef | null
   appellation_info?: AppellationRef | null
@@ -53,6 +76,13 @@ export interface UserWine {
   regionName: string
   appellationId: string | null
   appellationName: string
+  cuvee: string | null
+  predikatLevel: string | null
+  sweetness: string | null
+  juraStyle: string | null
+  friuliStyle: string | null
+  champagneType: string | null
+  disgorgementDate: string | null
 }
 
 export interface WineCreatePayload {
@@ -71,6 +101,13 @@ export interface WineCreatePayload {
   critic_window_end?: number | null
   region?: string | null
   appellation?: string | null
+  cuvee?: string | null
+  predikat_level?: string | null
+  sweetness?: string | null
+  jura_style?: string | null
+  friuli_style?: string | null
+  champagne_type?: string | null
+  disgorgement_date?: string | null
 }
 
 export type WineUpdatePayload = Partial<WineCreatePayload>
@@ -95,5 +132,12 @@ export function wineRecordToUserWine(r: WineRecord): UserWine {
     regionName: r.region_info?.name ?? '',
     appellationId: r.appellation_info?.id ?? null,
     appellationName: r.appellation_info?.name ?? '',
+    cuvee: r.cuvee ?? null,
+    predikatLevel: r.predikat_level ?? null,
+    sweetness: r.sweetness ?? null,
+    juraStyle: r.jura_style ?? null,
+    friuliStyle: r.friuli_style ?? null,
+    champagneType: r.champagne_type ?? null,
+    disgorgementDate: r.disgorgement_date ?? null,
   }
 }

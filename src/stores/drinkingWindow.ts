@@ -10,14 +10,13 @@ import type {
   DrinkingWindow,
   EngineConfig,
   WineInput,
+  CuveeRecord,
+  AbsoluteOverrideRecord,
+  ConditionFlagRecord,
 } from '@/types/drinkingWindow'
 import type { VintageRatingRecord } from '@/types/vintageRatings'
-import {
-  estimateDrinkingWindow,
-  norm,
-  parseVintageScore,
-  resolveArchetypeByKeyword,
-} from '@/lib/drinkingWindow'
+import { estimateDrinkingWindow, parseVintageScore } from '@/lib/drinkingWindow'
+import { buildEngineConfig as buildEngineConfigPure } from '@/lib/engineConfig'
 import {
   fetchArchetypes,
   createArchetype,
@@ -35,6 +34,9 @@ import {
   deleteHotVintage,
   fetchSettings,
   updateSettings,
+  fetchCuvees,
+  fetchAbsoluteOverrides,
+  fetchConditionFlags,
 } from '@/services/drinkingWindow'
 import { listVintageRatings } from '@/services/vintageRatings'
 import type {
@@ -51,6 +53,9 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
   const mappings = ref<ArchetypeMappingRecord[]>([])
   const producerTiers = ref<ProducerTierRecord[]>([])
   const hotVintages = ref<HotVintageRecord[]>([])
+  const cuvees = ref<CuveeRecord[]>([])
+  const absoluteOverrides = ref<AbsoluteOverrideRecord[]>([])
+  const conditionFlags = ref<ConditionFlagRecord[]>([])
   const settings = ref<SettingsRecord | null>(null)
   const vintageRatings = ref<VintageRatingRecord[]>([])
 
@@ -64,31 +69,15 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
 
   function buildEngineConfig(): EngineConfig | null {
     if (!settings.value) return null
-    const archetypesByKey: Record<string, ArchetypeRecord> = {}
-    for (const a of archetypes.value) archetypesByKey[a.key] = a
-
-    const hot = new Map<number, 'all' | Set<string>>()
-    for (const h of hotVintages.value) {
-      if (h.scope === 'all') {
-        hot.set(h.year, 'all')
-      } else {
-        const existing = hot.get(h.year)
-        if (existing === 'all') continue
-        const set = existing ?? new Set<string>()
-        set.add(h.scope)
-        hot.set(h.year, set)
-      }
-    }
-
-    const tierMap = new Map<string, number>()
-    for (const p of producerTiers.value) tierMap.set(norm(p.name), p.tier)
-
-    return {
-      archetypes: archetypesByKey,
+    return buildEngineConfigPure({
+      archetypes: archetypes.value,
       settings: settings.value,
-      hotVintages: hot,
-      producerTier: (producer?: string) => tierMap.get(norm(producer)) ?? null,
-    }
+      hotVintages: hotVintages.value,
+      producerTiers: producerTiers.value,
+      cuvees: cuvees.value,
+      absoluteOverrides: absoluteOverrides.value,
+      conditionFlags: conditionFlags.value,
+    })
   }
 
   function mappedArchetypeKey(wine: UserWine): string | null {
@@ -128,9 +117,14 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
         ? { start: wine.criticWindowStart, end: wine.criticWindowEnd }
         : null
 
+    // A cuvée archetype hint or an absolute override can produce a window even
+    // when the appellation/region isn't mapped.
+    const cuveeArchetype = config.cuvee(wine.producer, wine.cuvee)?.archetype_key ?? null
+    const hasOverride = !!config.absoluteOverride(wine.producer, wine.cuvee)
+
     // Decision: unmapped wines get no window (UI prompts to map) — unless a
-    // wine-specific critic window is present (Tier 1 needs no archetype).
-    if (!archetypeKey && !critic) return null
+    // critic window, cuvée hint, or override gives us something to anchor to.
+    if (!archetypeKey && !critic && !cuveeArchetype && !hasOverride) return null
 
     const rating = vintageRatingFor(wine)
     const parsed = rating ? parseVintageScore(rating.rating) : { score: null, nonVintage: false }
@@ -146,11 +140,19 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
       producer: wine.producer,
       // include the label so GC / predikat style hints can refine the archetype
       style: wine.name,
+      wineType: wine.style ?? null,
       vintageScore: parsed.score,
       docWindow,
       criticWindow: critic,
       nonVintage: parsed.nonVintage,
       archetypeKey,
+      cuvee: wine.cuvee,
+      predikatLevel: wine.predikatLevel,
+      sweetness: wine.sweetness,
+      juraStyle: wine.juraStyle,
+      friuliStyle: wine.friuliStyle,
+      champagneType: wine.champagneType,
+      disgorgementDate: wine.disgorgementDate,
     }
     return estimateDrinkingWindow(input, config)
   }
@@ -161,13 +163,16 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
     if (loaded.value && !force) return
     loading.value = true
     try {
-      const [a, m, p, h, s, vr] = await Promise.all([
+      const [a, m, p, h, s, vr, cu, ov, cf] = await Promise.all([
         fetchArchetypes(),
         fetchArchetypeMappings(),
         fetchProducerTiers(),
         fetchHotVintages(),
         fetchSettings(),
         listVintageRatings(),
+        fetchCuvees(),
+        fetchAbsoluteOverrides(),
+        fetchConditionFlags(),
       ])
       archetypes.value = a
       mappings.value = m
@@ -175,6 +180,9 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
       hotVintages.value = h
       settings.value = s
       vintageRatings.value = vr
+      cuvees.value = cu
+      absoluteOverrides.value = ov
+      conditionFlags.value = cf
       loaded.value = true
     } finally {
       loading.value = false
@@ -255,35 +263,6 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
     return updated
   }
 
-  /** Pre-fill mappings using the keyword resolver for any unmapped appellation/region. */
-  async function seedMappingsFromKeywords(
-    appellations: { id: string; name: string }[],
-    regions: { id: string; name: string }[],
-  ) {
-    const archetypeIdByKey = new Map(archetypes.value.map((a) => [a.key, a.id]))
-    let count = 0
-    for (const app of appellations) {
-      if (mappings.value.some((m) => m.appellation_id === app.id)) continue
-      const key = resolveArchetypeByKeyword({ region: app.name })
-      const archetypeId = key ? archetypeIdByKey.get(key) : undefined
-      if (archetypeId) {
-        await setAppellationMapping(app.id, archetypeId)
-        count++
-      }
-    }
-    for (const region of regions) {
-      if (mappings.value.some((m) => m.region_id === region.id)) continue
-      const key = resolveArchetypeByKeyword({ region: region.name })
-      const archetypeId = key ? archetypeIdByKey.get(key) : undefined
-      if (archetypeId) {
-        await setRegionMapping(region.id, archetypeId)
-        count++
-      }
-    }
-    if (count > 0) mappings.value = await fetchArchetypeMappings()
-    return count
-  }
-
   return {
     archetypes,
     mappings,
@@ -305,6 +284,5 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
     addHotVintage,
     removeHotVintage,
     saveSettings,
-    seedMappingsFromKeywords,
   }
 })

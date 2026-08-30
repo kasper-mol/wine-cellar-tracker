@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Pencil, Trash2, Plus, Wine, Search, X, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-vue-next'
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  Wine,
+  Search,
+  X,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
+} from 'lucide-vue-next'
 import {
   Table,
   TableBody,
@@ -141,7 +151,7 @@ function clearFilters() {
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'USD',
+  currency: 'EUR',
   minimumFractionDigits: 0,
 })
 
@@ -162,9 +172,7 @@ function formatPrice(value: number) {
         <p class="text-sm text-muted-foreground">
           Tracking {{ userWines.length }} wine{{ userWines.length === 1 ? '' : 's' }}.
         </p>
-        <Button @click="openCreate">
-          <Plus class="mr-1 h-4 w-4" /> Add wine
-        </Button>
+        <Button @click="openCreate"> <Plus class="mr-1 h-4 w-4" /> Add wine </Button>
       </div>
     </section>
 
@@ -328,7 +336,7 @@ function formatPrice(value: number) {
             </TableCell>
             <TableCell class="text-right font-medium">{{ wine.quantity }}</TableCell>
             <TableCell class="text-right font-medium">
-              {{ formatPrice(wine.purchasePrice * wine.quantity) }}
+              {{ formatPrice(wine.purchasePrice) }}
             </TableCell>
             <TableCell class="text-right">
               <div class="flex justify-end gap-1">
@@ -342,12 +350,7 @@ function formatPrice(value: number) {
                   <Wine class="h-4 w-4" />
                   <span class="sr-only">Drink a bottle of {{ wine.name }}</span>
                 </Button>
-                <Button
-                  variant="ghost"
-                  class="h-8 w-8 p-0"
-                  title="Edit"
-                  @click="openEdit(wine)"
-                >
+                <Button variant="ghost" class="h-8 w-8 p-0" title="Edit" @click="openEdit(wine)">
                   <Pencil class="h-4 w-4" />
                   <span class="sr-only">Edit {{ wine.name }}</span>
                 </Button>

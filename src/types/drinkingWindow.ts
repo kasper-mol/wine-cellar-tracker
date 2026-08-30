@@ -23,8 +23,51 @@ export interface ArchetypeRecord {
   t_peak: number
   t_end: number
   curve: CurveShape
+  /** Years after vintage before the wine physically exists. Suppresses a
+   * "drink now" state before release; NOT added to t_start. */
+  release_offset_years: number
+  confidence: string | null
+  notes: string | null
   created_at: string
   updated_at: string
+}
+
+export interface CuveeRecord {
+  id: string
+  producer_id: string
+  cuvee: string
+  tier: number | null
+  archetype_key: string | null
+  release_offset_years: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AbsoluteOverrideRecord {
+  id: string
+  producer: string
+  cuvee: string | null
+  archetype_key: string
+  t_start: number
+  t_peak: number
+  t_end: number
+  reason: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type FlagSeverity = 'low' | 'medium' | 'high'
+
+export interface ConditionFlagRecord {
+  id: string
+  producer: string
+  vintage_from: number | null
+  vintage_to: number | null
+  severity: FlagSeverity
+  flag: string
+  message: string
+  created_at: string
 }
 
 export interface ArchetypeMappingRecord {
@@ -49,6 +92,12 @@ export interface HotVintageRecord {
   year: number
   /** 'all' or an archetype key */
   scope: string
+  /** Fraction of the window to compress, e.g. 0.15 = 15%. Null => use settings default. */
+  compression: number | null
+  /** Hard ceiling in years-after-vintage; only meaningful with block_tier_override. */
+  hard_cap_years: number | null
+  /** When true, tier extension may not push t_end past the hard cap by more than ~2yr. */
+  block_tier_override: boolean
   created_at: string
 }
 
@@ -113,6 +162,8 @@ export interface WineInput {
   producer?: string
   /** extra style hints, e.g. 'Grand Cru', 'Auslese', 'GG' */
   style?: string
+  /** wine color/type used to pick a sensible fallback when no archetype resolves */
+  wineType?: 'red' | 'white' | 'rosé' | 'sparkling' | 'dessert' | null
   vintageScore?: number | null
   docWindow?: { start: number; end: number } | null
   criticWindow?: { start: number; end: number } | null
@@ -121,6 +172,22 @@ export interface WineInput {
   currentYear?: number
   /** resolved archetype key from the explicit mapping (null => no window) */
   archetypeKey?: string | null
+  /** specific cuvée name — resolves cuvée tier / absolute overrides */
+  cuvee?: string | null
+  /** structured intake fields that refine archetype selection */
+  predikatLevel?: string | null
+  sweetness?: string | null
+  juraStyle?: string | null
+  friuliStyle?: string | null
+  champagneType?: string | null
+  disgorgementDate?: string | null
+}
+
+/** A condition flag attached to a computed window (warning, not a window). */
+export interface WindowFlag {
+  severity: FlagSeverity
+  flag: string
+  message: string
 }
 
 export interface DrinkingWindow {
@@ -134,14 +201,35 @@ export interface DrinkingWindow {
   uncertaintyYears: number
   archetype: string
   notes: string[]
+  /** Provenance/condition warnings surfaced alongside the window. */
+  conditionFlags: WindowFlag[]
+  /** Years-after-vintage the wine is released; >0 means release-delayed. */
+  releaseOffsetYears: number
+}
+
+/** Per-(year, archetype) hot-vintage resolution. */
+export interface HotVintageDetail {
+  compression: number | null
+  hardCapYears: number | null
+  blockTierOverride: boolean
 }
 
 /** Config bundle injected into the pure engine. */
 export interface EngineConfig {
   archetypes: Record<string, ArchetypeRecord>
   settings: SettingsRecord
-  /** year -> 'all' | Set of archetype keys */
-  hotVintages: Map<number, 'all' | Set<string>>
+  /** archetype-scoped hot-vintage resolver ('all' scope matches any archetype) */
+  hotVintage: (year: number, archetypeKey: string) => HotVintageDetail | null
   /** normalized producer name -> tier */
   producerTier: (producer?: string) => number | null
+  /** (producer, cuvée) -> cuvée row (tier / archetype hint / release offset) */
+  cuvee: (producer?: string, cuvee?: string | null) => CuveeRecord | null
+  /** (producer, cuvée) -> absolute override, exact cuvée match only */
+  absoluteOverride: (producer?: string, cuvee?: string | null) => AbsoluteOverrideRecord | null
+  /** condition flags matching producer (+ optional region string) and vintage */
+  conditionFlags: (
+    producer?: string,
+    vintage?: number | null,
+    region?: string,
+  ) => ConditionFlagRecord[]
 }

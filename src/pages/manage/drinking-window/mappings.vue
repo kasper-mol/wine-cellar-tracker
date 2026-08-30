@@ -33,7 +33,7 @@ import type { WineAppellationRecord } from '@/types/wineAppellations'
 
 const dwStore = useDrinkingWindowStore()
 const { archetypes, mappings } = storeToRefs(dwStore)
-const { feedback, setSuccess, setError } = useFeedback()
+const { feedback, setError } = useFeedback()
 
 const NONE = '__none__'
 
@@ -162,19 +162,6 @@ async function onAssignRegion(regionId: string, value: string) {
   }
 }
 
-async function seedFromKeywords() {
-  if (!selectedCountryId.value) return
-  try {
-    const n = await dwStore.seedMappingsFromKeywords(
-      appellations.value.map((a) => ({ id: a.id, name: a.name })),
-      regions.value.map((r) => ({ id: r.id, name: r.name })),
-    )
-    setSuccess(`Seeded ${n} mapping${n === 1 ? '' : 's'} from keywords.`)
-  } catch (e) {
-    setError(e, 'Failed to seed mappings.')
-  }
-}
-
 function clearFilters() {
   selectedCountryId.value = null
   selectedRegionId.value = null
@@ -281,20 +268,6 @@ function clearFilters() {
       </div>
 
       <template v-else>
-        <!-- Seed helper -->
-        <Card>
-          <CardHeader>
-            <CardTitle>Seed from keywords</CardTitle>
-            <CardDescription>
-              Pre-fills obvious matches for currently visible <em>unmapped</em> rows.
-              Already-mapped entries are never overwritten.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="secondary" @click="seedFromKeywords">Seed from keywords</Button>
-          </CardContent>
-        </Card>
-
         <!-- Appellations -->
         <Card>
           <CardHeader>

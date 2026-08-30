@@ -105,18 +105,6 @@ async function onAssignRegion(regionId: string, value: string) {
     setError(e, 'Failed to set mapping.')
   }
 }
-async function seedFromKeywords() {
-  try {
-    const n = await dwStore.seedMappingsFromKeywords(
-      appellations.value.map((a) => ({ id: a.id, name: a.name })),
-      regions.value.map((r) => ({ id: r.id, name: r.name })),
-    )
-    setSuccess(`Seeded ${n} mappings from keywords.`)
-  } catch (e) {
-    setError(e, 'Failed to seed mappings.')
-  }
-}
-
 const mappedAppellationCount = computed(
   () => appellations.value.filter((a) => appellationArchetype(a.id) !== NONE).length,
 )
@@ -331,10 +319,6 @@ async function removeHot(id: string) {
         </CardDescription>
       </CardHeader>
       <CardContent class="space-y-6">
-        <div>
-          <Button variant="secondary" @click="seedFromKeywords">Seed from keywords</Button>
-        </div>
-
         <div>
           <h3 class="mb-2 font-medium">Appellations</h3>
           <Table>
