@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWineMapsStore } from '@/stores/wineMaps'
 import type { WineMapAreaRecord } from '@/types/wineMaps'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const wineMapsStore = useWineMapsStore()
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 const mapContainer = ref<HTMLElement | null>(null)
 const svgMarkup = ref('')
@@ -346,13 +348,12 @@ async function uploadNewVersion() {
 
 async function handleDeleteArea(area: WineMapAreaRecord) {
   const label = area.label || area.svg_area_id
-  if (
-    !window.confirm(
-      `Delete area “${label}”? This removes its mapping. You can re-add it later via “Import SVG areas”.`,
-    )
-  ) {
-    return
-  }
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Delete map area',
+    body: `“${label}” and its mapping will be removed. It can be re-added later with “Import SVG areas”.`,
+    confirmLabel: 'Delete',
+  })
+  if (!confirmed) return
 
   deletingAreaId.value = area.id
   try {
@@ -428,10 +429,10 @@ watch(
 
 <template>
   <div class="space-y-6 p-6">
-    <div class="rounded-xl border border-border bg-card p-6">
+    <div class="border-y border-border py-4">
       <div class="space-y-4">
         <div>
-          <h1 class="font-serif text-3xl font-semibold text-foreground">Wine Map Admin</h1>
+          <h1 class="font-heading text-3xl font-semibold text-foreground">Wine Map Admin</h1>
 
           <div v-if="adminMap" class="mt-3 text-sm text-muted-foreground">
             <div>
@@ -542,7 +543,7 @@ watch(
       </div>
     </div>
 
-    <div v-if="adminMap" class="rounded-xl border border-border bg-card p-6">
+    <div v-if="adminMap" class="border-y border-border py-4">
       <div class="mb-4">
         <h2 class="text-lg font-semibold text-foreground">SVG asset</h2>
         <p class="text-sm text-muted-foreground">
@@ -575,7 +576,9 @@ watch(
           {{ replacing ? 'Uploading...' : 'Upload new version' }}
         </Button>
 
-        <span v-if="replaceMessage" class="text-sm text-muted-foreground">{{ replaceMessage }}</span>
+        <span v-if="replaceMessage" class="text-sm text-muted-foreground">{{
+          replaceMessage
+        }}</span>
       </div>
 
       <div v-if="assetVersions.length" class="mt-4 overflow-x-auto">
@@ -612,7 +615,7 @@ watch(
     </div>
 
     <div v-if="adminMap" class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_420px]">
-      <div class="rounded-xl border border-border bg-card p-4">
+      <div class="rounded-md border border-border p-3">
         <div class="mb-4">
           <h2 class="text-lg font-semibold text-foreground">SVG Preview</h2>
           <p class="text-sm text-muted-foreground">
@@ -627,7 +630,7 @@ watch(
         />
       </div>
 
-      <div class="rounded-xl border border-border bg-card p-4">
+      <div class="rounded-md border border-border p-3">
         <div class="mb-4">
           <h2 class="text-lg font-semibold text-foreground">Area Editor</h2>
         </div>
@@ -733,13 +736,13 @@ watch(
           </div>
         </div>
 
-        <div v-else class="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <div v-else class="border-y border-border py-3 text-sm text-foreground/[0.55]">
           Select an area from the SVG or the list below.
         </div>
       </div>
     </div>
 
-    <div v-if="adminMap" class="rounded-xl border border-border bg-card p-4">
+    <div v-if="adminMap" class="rounded-md border border-border p-3">
       <div class="mb-4">
         <h2 class="text-lg font-semibold text-foreground">Areas</h2>
         <p class="text-sm text-muted-foreground">
@@ -749,7 +752,7 @@ watch(
 
       <div
         v-if="!visibleAreas.length"
-        class="rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
+        class="border-y border-border py-3 text-sm text-foreground/[0.55]"
       >
         No areas imported yet. Click “Import SVG areas”.
       </div>
@@ -817,4 +820,5 @@ watch(
       </div>
     </div>
   </div>
+  <ConfirmDialog ref="confirmRef" />
 </template>

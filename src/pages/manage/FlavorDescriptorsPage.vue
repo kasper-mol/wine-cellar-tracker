@@ -4,6 +4,8 @@ import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
 import FlavorDescriptorGroupsTable from '@/components/FlavorDescriptors/FlavorDescriptorGroupsTable.vue'
 import EditFlavorGroupDialog from '@/components/FlavorDescriptors/EditFlavorGroupDialog.vue'
 import CreateFlavorGroupDialog from '@/components/FlavorDescriptors/CreateFlavorGroupDialog.vue'
+import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
 
 const flavorDescriptorsStore = useFlavorDescriptorsStore()
 
@@ -29,19 +31,17 @@ function handleGroupCleared() {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Flavor descriptors</p>
-        <h1 class="text-3xl font-semibold tracking-tight">Flavor group management</h1>
-        <p class="text-muted-foreground">
-          Edit flavor groups, adjust levels, and manage descriptors in each category.
-        </p>
-      </div>
-      <div class="flex gap-2">
+  <div>
+    <ManageHeader
+      title="Flavour descriptors"
+      note="Descriptors are grouped by level and category, as the aroma wheel arranges them."
+    >
+      <template #actions>
         <CreateFlavorGroupDialog />
-      </div>
-    </div>
+      </template>
+    </ManageHeader>
+
+    <ManageTabs />
 
     <FlavorDescriptorGroupsTable @editGroup="handleEditGroup" />
 

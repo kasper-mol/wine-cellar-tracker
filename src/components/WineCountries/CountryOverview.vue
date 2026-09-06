@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Map, Wine } from 'lucide-vue-next'
-import MapViewer from '@/components/MapViewer.vue'
+import FigureRail from '@/components/editorial/FigureRail.vue'
+import PlateFigure from '@/components/editorial/PlateFigure.vue'
+import WineMapDisplay from '@/components/WineCountries/wineMapDisplay.vue'
+import { countryContent } from '@/content/countries'
 
 const props = defineProps<{
   country: {
@@ -11,38 +13,51 @@ const props = defineProps<{
   }
   regionCount: number
   appellationCount: number
+  labelsHeld: number
+  bottlesHeld: number
+  mapKey: string | null
 }>()
 
-const stats = computed(() => [
-  { label: 'Regions', value: props.regionCount, icon: Map },
-  { label: 'Appellations', value: props.appellationCount, icon: Wine },
+const content = computed(() => countryContent(props.country.name))
+
+const figures = computed(() => [
+  { label: 'Regions', value: props.regionCount },
+  { label: 'Appellations', value: props.appellationCount },
+  { label: 'Labels held', value: props.labelsHeld },
+  { label: 'Bottles', value: props.bottlesHeld },
 ])
 </script>
 
 <template>
-  <section class="grid gap-8 md:grid-cols-2">
-    <MapViewer :image-url="country.image_url" :title="country.name" />
-
-    <div class="flex flex-col space-y-6">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Country Profile</p>
-        <h1 class="mt-2 font-serif text-4xl font-semibold text-foreground">{{ country.name }}</h1>
-        <p v-if="country.code" class="mt-2 text-muted-foreground">ISO Code: {{ country.code }}</p>
-      </div>
-
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div
-          v-for="stat in stats"
-          :key="stat.label"
-          class="flex items-center gap-4 rounded-xl border border-border px-4 py-3"
-        >
-          <component :is="stat.icon" class="h-6 w-6 text-primary" />
-          <div>
-            <p class="text-sm text-muted-foreground">{{ stat.label }}</p>
-            <p class="text-2xl font-semibold text-foreground">{{ stat.value }}</p>
-          </div>
-        </div>
-      </div>
+  <section class="grid grid-cols-[1fr_440px] items-start gap-8 max-lg:flex max-lg:flex-col">
+    <div>
+      <p class="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent-700">
+        Country profile <template v-if="country.code">&nbsp;·&nbsp; {{ country.code }}</template>
+      </p>
+      <h1 class="mb-4 font-heading text-[72px] font-normal leading-[0.95]">{{ country.name }}</h1>
+      <p
+        v-if="content"
+        class="mb-4 columns-2 gap-6 hyphens-auto text-justify text-sm leading-[1.75] text-foreground/80"
+      >
+        {{ content.blurb }}
+      </p>
+      <FigureRail :figures="figures" orientation="horizontal" />
     </div>
+
+    <figure v-if="mapKey" class="max-lg:order-first">
+      <WineMapDisplay :map-key="mapKey" />
+      <figcaption class="mt-1 text-[11px] text-foreground/[0.55]">
+        Regions are clickable; each shape links to its encyclopedia entry.
+      </figcaption>
+    </figure>
+    <PlateFigure
+      v-else
+      class="max-lg:order-first"
+      :src="country.image_url"
+      :alt="`Map of ${country.name}`"
+      aspect="3 / 4"
+      :slot-label="`interactive SVG map — ${country.name}`"
+      caption="Regions are clickable; each shape links to its encyclopedia entry."
+    />
   </section>
 </template>

@@ -1,14 +1,11 @@
-<!-- src/pages/CountryDetailPage.vue -->
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { ArrowLeft } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
+import Breadcrumb from '@/components/editorial/Breadcrumb.vue'
 import CountryOverview from '@/components/WineCountries/CountryOverview.vue'
-import WineMapDisplay from '@/components/WineCountries/wineMapDisplay.vue'
 import CountryRegionsList from '@/components/WineCountries/CountryRegionsList.vue'
-import CountryAppellationsList from '@/components/WineCountries/CountryAppellationsList.vue'
+import { useCellarHoldings } from '@/composables/useCellarHoldings'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
@@ -29,6 +26,7 @@ const { countries } = storeToRefs(wineCountriesStore)
 const { regions } = storeToRefs(wineRegionsStore)
 const { appellations } = storeToRefs(wineAppellationsStore)
 const { maps: wineMaps } = storeToRefs(wineMapsStore)
+const { holdingForCountry, holdingForRegion, holdingLabel } = useCellarHoldings()
 
 const countryId = route.params.id as string
 
@@ -43,40 +41,28 @@ const countryMap = computed(() => {
   )
 })
 
-console.log('country', country.value)
-console.log('wineMaps', wineMaps.value)
-console.log('countryMap', countryMap.value)
 const countryMapKey = computed(() => countryMap.value?.key ?? null)
 
-const countryRegions = computed(() => {
-  return regions.value
+const countryRegions = computed(() =>
+  regions.value
     .filter((r) => r.country_id === countryId)
-    .map((region) => {
-      const regionAppellations = appellations.value.filter((a) => a.region_id === region.id)
-      return {
-        ...region,
-        appellationCount: regionAppellations.length,
-      }
-    })
+    .map((region) => ({
+      id: region.id,
+      name: region.name,
+      appellationCount: appellations.value.filter((a) => a.region_id === region.id).length,
+      holding: holdingLabel(holdingForRegion(region.id)),
+    })),
+)
+
+const appellationCount = computed(() => {
+  const regionIds = new Set(countryRegions.value.map((region) => region.id))
+  return appellations.value.filter(
+    (appellation) =>
+      appellation.region?.country_id === countryId || regionIds.has(appellation.region_id),
+  ).length
 })
 
-const countryAppellations = computed(() => {
-  const regionLookup = new Map(regions.value.map((region) => [region.id, region]))
-  return appellations.value
-    .filter((appellation) => {
-      const region = appellation.region ?? regionLookup.get(appellation.region_id)
-      return region?.country_id === countryId
-    })
-    .map((appellation) => {
-      const region = appellation.region ?? regionLookup.get(appellation.region_id)
-      return {
-        id: appellation.id,
-        name: appellation.name,
-        regionName: region?.name ?? 'Unknown region',
-        grapeCount: appellation.grapes?.length ?? 0,
-      }
-    })
-})
+const holding = computed(() => holdingForCountry(countryId))
 
 onMounted(async () => {
   await Promise.all([
@@ -90,38 +76,27 @@ onMounted(async () => {
 function navigateToRegion(regionId: string) {
   router.push(`/region/${regionId}`)
 }
-
-function navigateToAppellation(appellationId: string) {
-  router.push(`/appellation/${appellationId}`)
-}
 </script>
 
 <template>
-  <div v-if="!country" class="container py-12">
-    <p class="text-muted-foreground">Country not found.</p>
-  </div>
+  <p v-if="!country" class="text-sm text-foreground/[0.55]">Country not found.</p>
 
-  <div v-else class="min-h-screen">
-    <div class="container max-w-6xl space-y-12">
-      <Button variant="ghost" class="mb-4" @click="router.push('/countries')">
-        <ArrowLeft class="mr-2 h-4 w-4" />
-        Back to Countries
-      </Button>
+  <div v-else>
+    <Breadcrumb :items="[{ label: 'Countries', to: '/countries' }, { label: country.name }]" />
 
-      <CountryOverview
-        :country="country"
-        :region-count="countryRegions.length"
-        :appellation-count="countryAppellations.length"
-      />
+    <CountryOverview
+      :country="country"
+      :region-count="countryRegions.length"
+      :appellation-count="appellationCount"
+      :labels-held="holding.labels"
+      :bottles-held="holding.bottles"
+      :map-key="countryMapKey"
+    />
 
-      <WineMapDisplay v-if="countryMapKey" :map-key="countryMapKey" />
-
-      <CountryRegionsList :regions="countryRegions" @select-region="navigateToRegion" />
-
-      <CountryAppellationsList
-        :appellations="countryAppellations"
-        @select-appellation="navigateToAppellation"
-      />
-    </div>
+    <CountryRegionsList
+      :country-name="country.name"
+      :regions="countryRegions"
+      @select-region="navigateToRegion"
+    />
   </div>
 </template>

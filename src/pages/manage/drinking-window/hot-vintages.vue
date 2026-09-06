@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterLink } from 'vue-router'
 import { ArrowLeft, Trash2 } from 'lucide-vue-next'
@@ -19,8 +19,10 @@ import { Badge } from '@/components/ui/badge'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const dwStore = useDrinkingWindowStore()
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const { archetypes, hotVintages } = storeToRefs(dwStore)
 const { feedback, setSuccess, setError } = useFeedback()
 
@@ -47,7 +49,11 @@ async function addHot() {
 }
 
 async function removeHot(id: string, year: number) {
-  if (!window.confirm(`Remove ${year} from hot vintages?`)) return
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Remove hot vintage',
+    body: `${year} will no longer be compressed by the engine. This cannot be undone.`,
+  })
+  if (!confirmed) return
   try {
     await dwStore.removeHotVintage(id)
     setSuccess(`Removed ${year}.`)
@@ -82,12 +88,11 @@ function scopeLabel(scope: string) {
       </p>
       <ul class="mt-2 space-y-0.5 text-sm text-muted-foreground">
         <li>
-          <strong>Drink-by</strong> is multiplied by the
-          <em>hot drink-by factor</em> (default 0.85) — shortening the window by ~15%.
+          <strong>Drink-by</strong> is multiplied by the <em>hot drink-by factor</em> (default 0.85)
+          — shortening the window by ~15%.
         </li>
         <li>
-          <strong>Peak window</strong> is compressed by the
-          <em>hot peak factor</em> (default 0.9).
+          <strong>Peak window</strong> is compressed by the <em>hot peak factor</em> (default 0.9).
         </li>
         <li>A "hot vintage" note is added to the window's notes array.</li>
       </ul>
@@ -109,10 +114,18 @@ function scopeLabel(scope: string) {
         <div class="flex flex-wrap items-end gap-3">
           <div class="space-y-2">
             <Label>Year</Label>
-            <Input type="number" v-model.number="newHot.year" class="w-28" placeholder="e.g. 2003" />
+            <Input
+              type="number"
+              v-model.number="newHot.year"
+              class="w-28"
+              placeholder="e.g. 2003"
+            />
           </div>
           <div class="space-y-2">
-            <Label>Scope <span class="text-xs text-muted-foreground">"all" or archetype key</span></Label>
+            <Label
+              >Scope
+              <span class="text-xs text-muted-foreground">"all" or archetype key</span></Label
+            >
             <Input v-model="newHot.scope" class="w-52" placeholder="all" />
           </div>
           <Button @click="addHot">Add</Button>
@@ -139,7 +152,9 @@ function scopeLabel(scope: string) {
       <CardHeader>
         <CardTitle>
           Current hot vintages
-          <span class="text-base font-normal text-muted-foreground">({{ hotVintages.length }})</span>
+          <span class="text-base font-normal text-muted-foreground"
+            >({{ hotVintages.length }})</span
+          >
         </CardTitle>
         <CardDescription>Sorted newest first.</CardDescription>
       </CardHeader>
@@ -180,4 +195,5 @@ function scopeLabel(scope: string) {
       </CardContent>
     </Card>
   </div>
+  <ConfirmDialog ref="confirmRef" />
 </template>

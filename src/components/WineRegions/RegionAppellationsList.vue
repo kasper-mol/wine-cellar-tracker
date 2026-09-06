@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { Wine } from 'lucide-vue-next'
-import { Card } from '@/components/ui/card'
-
 defineProps<{
   appellations: Array<{
     id: string
@@ -14,36 +11,22 @@ const emit = defineEmits<{ (e: 'select-appellation', id: string): void }>()
 
 <template>
   <section>
-    <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h3 class="font-serif text-2xl font-semibold text-foreground">Appellations</h3>
-      </div>
-    </div>
+    <h2 class="mb-3 mt-6 font-heading text-[26px] font-normal">Appellations</h2>
 
-    <div
-      v-if="appellations.length === 0"
-      class="rounded-lg border border-dashed border-muted p-8 text-center text-muted-foreground"
-    >
-      No appellations found for this region.
-    </div>
-    <div v-else class="grid grid-cols-2 gap-6">
-      <Card
+    <div v-if="appellations.length" class="flex flex-wrap gap-1.5">
+      <a
         v-for="appellation in appellations"
         :key="appellation.id"
-        class="group cursor-pointer overflow-hidden border-border bg-card p-6 transition-all hover:shadow-lg"
-        @click="emit('select-appellation', appellation.id)"
+        href="#"
+        class="inline-flex items-center rounded-sm border border-primary px-2.5 py-[3px] text-[11px] tracking-[0.02em] text-primary transition-colors hover:bg-primary/[0.12]"
+        @click.prevent="emit('select-appellation', appellation.id)"
       >
-        <div class="flex items-center justify-between">
-          <h3
-            class="font-serif text-2xl font-semibold text-card-foreground transition-colors group-hover:text-primary"
-          >
-            {{ appellation.name }}
-          </h3>
-          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Wine class="h-5 w-5 text-primary" />
-          </div>
-        </div>
-      </Card>
+        {{ appellation.name }}
+      </a>
     </div>
+
+    <p v-else class="border-y border-border py-3 text-sm text-foreground/[0.55]">
+      No appellations catalogued for this region yet.
+    </p>
   </section>
 </template>

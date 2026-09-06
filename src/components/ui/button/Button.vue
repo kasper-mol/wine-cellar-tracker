@@ -22,19 +22,20 @@ withDefaults(
     v-bind="$attrs"
     :class="
       cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent font-heading text-sm font-semibold leading-tight transition-colors disabled:pointer-events-none disabled:opacity-45 disabled:cursor-not-allowed',
         {
-          default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-          secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-          outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-          ghost: 'hover:bg-accent hover:text-accent-foreground',
-          destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+          // No solid accent fills anywhere in this system — the primary is an outline.
+          default: 'border-primary text-primary hover:bg-primary/[0.12] active:bg-primary/[0.22]',
+          secondary: 'border-border hover:bg-foreground/[0.07] active:bg-foreground/[0.14]',
+          outline: 'border-border hover:bg-foreground/[0.07] active:bg-foreground/[0.14]',
+          ghost: 'text-primary hover:bg-primary/10 active:bg-primary/[0.18]',
+          destructive: 'text-destructive hover:bg-destructive/10 active:bg-destructive/[0.18]',
         }[variant],
         {
-          default: 'h-10 px-4 py-2',
-          sm: 'h-9 rounded-md px-3',
-          lg: 'h-11 rounded-md px-8',
-          icon: 'h-10 w-10',
+          default: 'min-h-9 px-4 py-2',
+          sm: 'min-h-8 px-3 py-1.5 text-[13px]',
+          lg: 'min-h-11 px-6 py-2',
+          icon: 'h-9 w-9 p-0',
         }[size],
         $attrs.class as string,
       )

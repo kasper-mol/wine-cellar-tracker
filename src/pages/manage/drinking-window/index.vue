@@ -2,7 +2,9 @@
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterLink } from 'vue-router'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import FigureRail from '@/components/editorial/FigureRail.vue'
+import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
@@ -26,6 +28,16 @@ const mappedAppellations = computed(
 const mappedRegions = computed(
   () => new Set(mappings.value.filter((m) => m.region_id).map((m) => m.region_id)).size,
 )
+
+const figures = computed(() => [
+  { label: 'Archetypes', value: archetypes.value.length },
+  {
+    label: 'Appellations mapped',
+    value: `${mappedAppellations.value} / ${appellations.value.length}`,
+  },
+  { label: 'Regions mapped', value: `${mappedRegions.value} / ${regions.value.length}` },
+  { label: 'Producer tiers', value: producerTiers.value.length },
+])
 
 const sections = [
   {
@@ -62,53 +74,30 @@ const sections = [
 </script>
 
 <template>
-  <div class="space-y-8">
-    <div>
-      <p class="text-sm uppercase tracking-wide text-muted-foreground">Manage</p>
-      <h1 class="text-3xl font-semibold tracking-tight">Drinking-window engine</h1>
-      <p class="mt-1 text-muted-foreground">
-        Configure the scoring tables that power computed drink windows on the dashboard. Estimates
-        are vintage- and region-level — never bottle-specific.
-      </p>
-    </div>
+  <div>
+    <ManageHeader
+      title="Drinking-window engine"
+      note="The scoring tables behind every computed window on the dashboard. Estimates are vintage- and region-level — never bottle-specific."
+    />
 
-    <!-- Stats -->
-    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="rounded-xl border bg-card p-5 shadow-sm">
-        <p class="text-sm text-muted-foreground">Archetypes</p>
-        <p class="text-3xl font-semibold">{{ archetypes.length }}</p>
-      </div>
-      <div class="rounded-xl border bg-card p-5 shadow-sm">
-        <p class="text-sm text-muted-foreground">Appellations mapped</p>
-        <p class="text-3xl font-semibold">
-          {{ mappedAppellations }}
-          <span class="text-lg font-normal text-muted-foreground">/ {{ appellations.length }}</span>
-        </p>
-      </div>
-      <div class="rounded-xl border bg-card p-5 shadow-sm">
-        <p class="text-sm text-muted-foreground">Regions mapped</p>
-        <p class="text-3xl font-semibold">
-          {{ mappedRegions }}
-          <span class="text-lg font-normal text-muted-foreground">/ {{ regions.length }}</span>
-        </p>
-      </div>
-      <div class="rounded-xl border bg-card p-5 shadow-sm">
-        <p class="text-sm text-muted-foreground">Producer tiers</p>
-        <p class="text-3xl font-semibold">{{ producerTiers.length }}</p>
-      </div>
-    </section>
+    <ManageTabs />
 
-    <!-- Nav cards -->
-    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <FigureRail :figures="figures" orientation="horizontal" class="mb-8" />
+
+    <div class="border-t border-border">
       <RouterLink
         v-for="s in sections"
         :key="s.to"
         :to="s.to"
-        class="block rounded-xl border bg-card p-5 shadow-sm transition hover:bg-muted/50"
+        class="group grid grid-cols-[220px_1fr] items-baseline gap-4 border-b border-border px-2 py-4 transition-colors hover:bg-primary/5 max-md:grid-cols-1"
       >
-        <h2 class="font-semibold">{{ s.name }}</h2>
-        <p class="mt-1 text-sm text-muted-foreground">{{ s.description }}</p>
+        <h2 class="font-heading text-[21px] transition-colors group-hover:text-accent-700">
+          {{ s.name }}
+        </h2>
+        <p class="text-[13px] leading-[1.6] text-foreground/[0.74]">{{ s.description }}</p>
       </RouterLink>
-    </section>
+    </div>
+
+    <p class="mt-4 text-xs text-foreground/50">Hot vintages: {{ hotVintages.length }} flagged.</p>
   </div>
 </template>

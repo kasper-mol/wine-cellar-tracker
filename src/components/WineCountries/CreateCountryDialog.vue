@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, defineExpose } from 'vue'
+import { Plus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -66,7 +67,10 @@ defineExpose({ openDialog })
 </script>
 
 <template>
-  <Button @click="openDialog">Add Country</Button>
+  <Button @click="openDialog">
+    <Plus class="h-3.5 w-3.5" :stroke-width="1.5" />
+    New country
+  </Button>
   <Dialog v-model:open="dialogOpen">
     <DialogContent class="sm:max-w-lg">
       <DialogHeader>

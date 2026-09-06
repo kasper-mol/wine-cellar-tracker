@@ -26,8 +26,10 @@ import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
 import type { ArchetypeRecord, CurveShape } from '@/types/drinkingWindow'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const dwStore = useDrinkingWindowStore()
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const { archetypes } = storeToRefs(dwStore)
 const { feedback, setSuccess, setError } = useFeedback()
 
@@ -35,7 +37,14 @@ const CURVES: CurveShape[] = ['earlyBell', 'standardBell', 'lateBell', 'twinPeak
 
 const archetypeRows = ref<ArchetypeRecord[]>([])
 
-const blank = () => ({ key: '', name: '', t_start: 2, t_peak: 6, t_end: 12, curve: 'standardBell' as CurveShape })
+const blank = () => ({
+  key: '',
+  name: '',
+  t_start: 2,
+  t_peak: 6,
+  t_end: 12,
+  curve: 'standardBell' as CurveShape,
+})
 const newForm = reactive(blank())
 const adding = ref(false)
 
@@ -64,8 +73,12 @@ async function saveRow(row: ArchetypeRecord) {
 }
 
 async function deleteRow(row: ArchetypeRecord) {
-  if (!window.confirm(`Delete archetype "${row.name}"? Any appellation/region mappings using it will also be removed.`))
-    return
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Delete archetype',
+    body: `“${row.name}” and every appellation or region mapping using it will be removed. This cannot be undone.`,
+    confirmLabel: 'Delete',
+  })
+  if (!confirmed) return
   try {
     await dwStore.removeArchetype(row.id)
     archetypeRows.value = archetypeRows.value.filter((r) => r.id !== row.id)
@@ -104,14 +117,10 @@ async function addArchetype() {
 
 /* SVG paths for each curve shape (viewBox 0 0 120 50) */
 const CURVE_SVG: Record<CurveShape, string> = {
-  earlyBell:
-    'M 0 48 C 5 48 12 2 28 2 C 44 2 60 22 120 48 Z',
-  standardBell:
-    'M 0 48 C 18 48 32 2 60 2 C 88 2 102 48 120 48 Z',
-  lateBell:
-    'M 0 48 C 15 48 45 46 62 22 C 74 6 88 2 105 2 C 113 2 117 22 120 48 Z',
-  twinPeak:
-    'M 0 48 C 7 48 16 2 28 2 C 40 2 46 34 58 34 C 70 34 76 2 90 2 C 104 2 112 48 120 48 Z',
+  earlyBell: 'M 0 48 C 5 48 12 2 28 2 C 44 2 60 22 120 48 Z',
+  standardBell: 'M 0 48 C 18 48 32 2 60 2 C 88 2 102 48 120 48 Z',
+  lateBell: 'M 0 48 C 15 48 45 46 62 22 C 74 6 88 2 105 2 C 113 2 117 22 120 48 Z',
+  twinPeak: 'M 0 48 C 7 48 16 2 28 2 C 40 2 46 34 58 34 C 70 34 76 2 90 2 C 104 2 112 48 120 48 Z',
 }
 
 const CURVE_LABELS: Record<CurveShape, string> = {
@@ -137,24 +146,27 @@ const CURVE_LABELS: Record<CurveShape, string> = {
       <h1 class="text-3xl font-semibold tracking-tight">Archetypes</h1>
       <p class="mt-1 text-muted-foreground">
         An archetype defines the underlying aging curve for a wine type. The three time values are
-        <strong>years after vintage</strong> calibrated to a <strong>neutral 90-point vintage</strong>:
-        <em>tStart</em> = earliest drinkable, <em>tPeak</em> = prime window centre,
-        <em>tEnd</em> = drink-by deadline.
+        <strong>years after vintage</strong> calibrated to a
+        <strong>neutral 90-point vintage</strong>: <em>tStart</em> = earliest drinkable,
+        <em>tPeak</em> = prime window centre, <em>tEnd</em> = drink-by deadline.
       </p>
-      <div class="mt-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground space-y-1">
+      <div
+        class="mt-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground space-y-1"
+      >
         <p>
           <strong class="text-foreground">What "neutral 90-point" means:</strong>
-          The archetype times assume the vintage scored exactly 90 pts — a solid but unremarkable year.
-          For any other score the engine applies a quality delta:
-          <code class="rounded bg-muted px-1">Q = (score − 90) / 3</code>.
-          A 93-pt vintage gives Q = +1, shifting all three boundaries later by roughly 1× the
-          K-coefficient. A 87-pt vintage gives Q = −1, pulling them earlier.
-          A truly great vintage (96 pts, Q ≈ +2) can add several years to the window;
-          a poor one (84 pts, Q ≈ −2) can shorten it noticeably.
+          The archetype times assume the vintage scored exactly 90 pts — a solid but unremarkable
+          year. For any other score the engine applies a quality delta:
+          <code class="rounded bg-muted px-1">Q = (score − 90) / 3</code>. A 93-pt vintage gives Q =
+          +1, shifting all three boundaries later by roughly 1× the K-coefficient. A 87-pt vintage
+          gives Q = −1, pulling them earlier. A truly great vintage (96 pts, Q ≈ +2) can add several
+          years to the window; a poor one (84 pts, Q ≈ −2) can shorten it noticeably.
         </p>
         <p>
           The midpoint (90) and divisor (3) are tunable in
-          <RouterLink to="/manage/drinking-window/settings" class="underline hover:text-foreground">Calibration</RouterLink>.
+          <RouterLink to="/manage/drinking-window/settings" class="underline hover:text-foreground"
+            >Calibration</RouterLink
+          >.
         </p>
       </div>
     </div>
@@ -173,11 +185,7 @@ const CURVE_LABELS: Record<CurveShape, string> = {
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <div v-for="curve in CURVES" :key="curve" class="space-y-2">
             <p class="text-sm font-medium">{{ curve }}</p>
-            <svg
-              viewBox="0 0 120 50"
-              class="w-full rounded border bg-muted/30"
-              aria-hidden="true"
-            >
+            <svg viewBox="0 0 120 50" class="w-full rounded border bg-muted/30" aria-hidden="true">
               <path
                 :d="CURVE_SVG[curve]"
                 fill="hsl(var(--primary) / 0.25)"
@@ -197,7 +205,9 @@ const CURVE_LABELS: Record<CurveShape, string> = {
     <Card>
       <CardHeader>
         <CardTitle>All archetypes</CardTitle>
-        <CardDescription>Edit inline and save per row. Delete removes all associated mappings.</CardDescription>
+        <CardDescription
+          >Edit inline and save per row. Delete removes all associated mappings.</CardDescription
+        >
       </CardHeader>
       <CardContent>
         <Table>
@@ -208,15 +218,18 @@ const CURVE_LABELS: Record<CurveShape, string> = {
               <TableHead
                 class="w-20 cursor-help"
                 title="tStart — years after vintage when the wine first becomes drinkable at a neutral 90-pt score. Higher scores push this later; lower scores pull it earlier."
-              >tStart ⓘ</TableHead>
+                >tStart ⓘ</TableHead
+              >
               <TableHead
                 class="w-20 cursor-help"
                 title="tPeak — years after vintage at the centre of the prime drinking window. The engine calculates peakStart and peakEnd symmetrically around this point."
-              >tPeak ⓘ</TableHead>
+                >tPeak ⓘ</TableHead
+              >
               <TableHead
                 class="w-20 cursor-help"
                 title="tEnd — years after vintage when the wine should be finished (drink-by). Beyond this the engine marks the wine Past prime."
-              >tEnd ⓘ</TableHead>
+                >tEnd ⓘ</TableHead
+              >
               <TableHead>Curve</TableHead>
               <TableHead class="text-right">Actions</TableHead>
             </TableRow>
@@ -268,14 +281,16 @@ const CURVE_LABELS: Record<CurveShape, string> = {
       <CardHeader>
         <CardTitle>Add archetype</CardTitle>
         <CardDescription>
-          The key is a stable internal identifier (camelCase slug, e.g. "myCustomRed"). It cannot
-          be changed after creation.
+          The key is a stable internal identifier (camelCase slug, e.g. "myCustomRed"). It cannot be
+          changed after creation.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div class="space-y-2">
-            <Label>Key <span class="text-xs text-muted-foreground">(camelCase, unique)</span></Label>
+            <Label
+              >Key <span class="text-xs text-muted-foreground">(camelCase, unique)</span></Label
+            >
             <Input v-model="newForm.key" placeholder="e.g. myCustomRed" />
           </div>
           <div class="space-y-2">
@@ -292,7 +307,9 @@ const CURVE_LABELS: Record<CurveShape, string> = {
             </Select>
           </div>
           <div class="space-y-2">
-            <Label title="Years after vintage when the wine first becomes drinkable at a neutral 90-pt score.">
+            <Label
+              title="Years after vintage when the wine first becomes drinkable at a neutral 90-pt score."
+            >
               tStart (yrs) ⓘ
             </Label>
             <Input type="number" v-model.number="newForm.t_start" min="0" />
@@ -304,7 +321,9 @@ const CURVE_LABELS: Record<CurveShape, string> = {
             <Input type="number" v-model.number="newForm.t_peak" min="0" />
           </div>
           <div class="space-y-2">
-            <Label title="Years after vintage when the wine should be finished. Beyond this it is marked Past prime.">
+            <Label
+              title="Years after vintage when the wine should be finished. Beyond this it is marked Past prime."
+            >
               tEnd (yrs) ⓘ
             </Label>
             <Input type="number" v-model.number="newForm.t_end" min="0" />
@@ -318,4 +337,5 @@ const CURVE_LABELS: Record<CurveShape, string> = {
       </CardContent>
     </Card>
   </div>
+  <ConfirmDialog ref="confirmRef" />
 </template>

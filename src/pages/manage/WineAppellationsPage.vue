@@ -3,7 +3,10 @@ import { ref, onMounted } from 'vue'
 import WineAppellationsTable from '@/components/WineAppellations/WineAppellationsTable.vue'
 import CreateAppellationDialog from '@/components/WineAppellations/CreateAppellationsDialog.vue'
 import EditAppellationDialog from '@/components/WineAppellations/EditAppellationsDialog.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
+import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
@@ -18,6 +21,7 @@ const { feedback, setSuccess, setError } = useFeedback()
 
 const selectedAppellationId = ref<string | null>(null)
 const editDialogRef = ref<InstanceType<typeof EditAppellationDialog> | null>(null)
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 onMounted(async () => {
   await wineCountriesStore.loadAll()
@@ -34,9 +38,12 @@ function handleEditAppellation(id: string) {
 async function handleDeleteAppellation(id: string) {
   if (!id) return
   const app = wineAppellationsStore.appellations.find((a) => a.id === id)
-  const confirmed = window.confirm(
-    app ? `Delete ${app.name}? This action cannot be undone.` : 'Delete this appellation?',
-  )
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Delete appellation',
+    body: app
+      ? `${app.name} and its grape rules will be removed. This cannot be undone.`
+      : 'This appellation and its grape rules will be removed. This cannot be undone.',
+  })
   if (!confirmed) return
 
   try {
@@ -50,28 +57,28 @@ async function handleDeleteAppellation(id: string) {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Wine appellations</p>
-        <h1 class="text-3xl font-semibold tracking-tight">Wine appellations overview</h1>
-        <p class="text-muted-foreground">
-          Map appellations to their regions to keep catalog data consistent.
-        </p>
-      </div>
-      <div class="flex gap-2">
+  <div>
+    <ManageHeader
+      title="Appellations"
+      note="Appellations are mapped to their region and carry the grape rules read by the encyclopedia."
+    >
+      <template #actions>
         <CreateAppellationDialog />
-        <EditAppellationDialog
-          ref="editDialogRef"
-          :appellationId="selectedAppellationId || undefined"
-        />
-      </div>
-    </div>
+      </template>
+    </ManageHeader>
+
+    <ManageTabs />
 
     <WineAppellationsTable
       @editAppellation="handleEditAppellation"
       @deleteAppellation="handleDeleteAppellation"
     />
-    <FeedbackBanner :feedback="feedback" />
+    <FeedbackBanner :feedback="feedback" class="mt-4" />
+
+    <EditAppellationDialog
+      ref="editDialogRef"
+      :appellationId="selectedAppellationId || undefined"
+    />
+    <ConfirmDialog ref="confirmRef" />
   </div>
 </template>

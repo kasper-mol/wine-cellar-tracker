@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 
 import DashboardPage from '@/pages/DashboardPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
+import WineFormPage from '@/pages/WineFormPage.vue'
 import CountriesPage from '@/pages/countries.vue'
 import RegionsPage from '@/pages/regions.vue'
 import AppellationsPage from '@/pages/appellations.vue'
@@ -39,6 +40,17 @@ const router = createRouter({
       path: '/',
       name: 'dashboard',
       component: DashboardPage,
+    },
+    {
+      path: '/cellar/add',
+      name: 'wine-create',
+      component: WineFormPage,
+    },
+    {
+      path: '/cellar/:id/edit',
+      name: 'wine-edit',
+      component: WineFormPage,
+      props: true,
     },
     {
       path: '/countries',

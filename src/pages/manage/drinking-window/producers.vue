@@ -27,6 +27,7 @@ import { useFeedback } from '@/composables/useFeedback'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
 
 const dwStore = useDrinkingWindowStore()
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const { producerTiers } = storeToRefs(dwStore)
 const { feedback, setSuccess, setError } = useFeedback()
 
@@ -62,7 +63,11 @@ async function changeProducerTier(id: string, value: string) {
 }
 
 async function removeProducer(id: string, name: string) {
-  if (!window.confirm(`Remove "${name}" from producer tiers?`)) return
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Remove producer tier',
+    body: `“${name}” will lose its tier, and its wines will no longer be extended. This cannot be undone.`,
+  })
+  if (!confirmed) return
   try {
     await dwStore.removeProducerTier(id)
     setSuccess(`Removed "${name}".`)
@@ -72,10 +77,13 @@ async function removeProducer(id: string, name: string) {
 }
 
 import { computed } from 'vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const filteredProducers = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  return q ? producerTiers.value.filter((p) => p.name.toLowerCase().includes(q)) : producerTiers.value
+  return q
+    ? producerTiers.value.filter((p) => p.name.toLowerCase().includes(q))
+    : producerTiers.value
 })
 </script>
 
@@ -146,7 +154,12 @@ const filteredProducers = computed(() => {
     <!-- List -->
     <Card>
       <CardHeader>
-        <CardTitle>All producers <span class="text-base font-normal text-muted-foreground">({{ producerTiers.length }})</span></CardTitle>
+        <CardTitle
+          >All producers
+          <span class="text-base font-normal text-muted-foreground"
+            >({{ producerTiers.length }})</span
+          ></CardTitle
+        >
       </CardHeader>
       <CardContent class="space-y-3">
         <Input v-model="searchQuery" placeholder="Filter by name…" class="max-w-sm" />
@@ -195,4 +208,5 @@ const filteredProducers = computed(() => {
       </CardContent>
     </Card>
   </div>
+  <ConfirmDialog ref="confirmRef" />
 </template>

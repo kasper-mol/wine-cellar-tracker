@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch, defineExpose } from 'vue'
+import { Plus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -100,7 +101,10 @@ defineExpose({ openDialog })
 </script>
 
 <template>
-  <Button @click="openDialog">Add Appellation</Button>
+  <Button @click="openDialog">
+    <Plus class="h-3.5 w-3.5" :stroke-width="1.5" />
+    New appellation
+  </Button>
   <Dialog v-model:open="dialogOpen">
     <DialogContent class="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
@@ -113,7 +117,11 @@ defineExpose({ openDialog })
         </div>
         <div class="space-y-2">
           <Label>Country</Label>
-          <select v-model="selectedCountryId" class="w-full border rounded p-2" :disabled="isCreated">
+          <select
+            v-model="selectedCountryId"
+            class="w-full border rounded p-2"
+            :disabled="isCreated"
+          >
             <option value="" disabled>Select a country</option>
             <option v-for="c in countries" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>

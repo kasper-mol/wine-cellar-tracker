@@ -2,13 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { ArrowLeft } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
+import Breadcrumb from '@/components/editorial/Breadcrumb.vue'
 import RegionOverview from '@/components/WineRegions/RegionOverview.vue'
+import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
-import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
 import { getVintageRatingsBySourceForTarget } from '@/services/vintageRatings'
 import type { VintageRatingsBySource } from '@/types/vintageRatings'
 
@@ -63,33 +62,25 @@ function navigateToAppellation(appellationId: string) {
 </script>
 
 <template>
-  <div v-if="!region" class="container py-12">
-    <p class="text-muted-foreground">Region not found.</p>
-  </div>
+  <p v-if="!region" class="text-sm text-foreground/[0.55]">Region not found.</p>
 
-  <div v-else class="min-h-screen">
-    <div class="container space-y-4">
-      <Button
-        v-if="country"
-        variant="ghost"
-        class="mb-4"
-        @click="router.push(`/country/${region.country_id}`)"
-      >
-        <ArrowLeft class="mr-2 h-4 w-4" />
-        Back to {{ country.name }}
-      </Button>
+  <div v-else>
+    <Breadcrumb
+      :items="[
+        { label: 'Countries', to: '/countries' },
+        ...(country ? [{ label: country.name, to: `/country/${country.id}` }] : []),
+        { label: region.name },
+      ]"
+    />
 
-      <RegionOverview
-        :region="region"
-        :country-name="country?.name ?? 'Unknown country'"
-        :appellation-count="regionAppellations.length"
-        :region-appellations="regionAppellations"
-        @select-appellation="navigateToAppellation"
-      />
+    <RegionOverview
+      :region="region"
+      :country-name="country?.name ?? 'Unknown country'"
+      :appellation-count="regionAppellations.length"
+      :region-appellations="regionAppellations"
+      @select-appellation="navigateToAppellation"
+    />
 
-      <section v-if="vintageSources.length" class="mt-8 space-y-4">
-        <VintageRatingsTable :data="vintageSources" title="Vintage ratings" />
-      </section>
-    </div>
+    <VintageRatingsTable v-if="vintageSources.length" :data="vintageSources" class="mt-8" />
   </div>
 </template>

@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Card } from '@/components/ui/card'
 import FlavorCategoryGroup from '@/components/FlavorDescriptors/FlavorCategoryGroup.vue'
+import { levelGloss } from '@/content/flavorLevels'
 import type { FlavorDescriptorRecord } from '@/types/flavorDescriptors'
 
 const props = defineProps<{
   level: string
+  numeral: string
   categories: { name: string; descriptors: FlavorDescriptorRecord[] }[]
 }>()
 
 const totalCount = computed(() =>
   props.categories.reduce((sum, category) => sum + category.descriptors.length, 0),
 )
+
+const gloss = computed(() => levelGloss(props.level))
 
 function formatLevel(value: string) {
   return value
@@ -22,15 +25,15 @@ function formatLevel(value: string) {
 </script>
 
 <template>
-  <Card class="border-border bg-card/40 p-6">
-    <div class="mb-6 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="font-serif text-3xl font-semibold text-foreground">
-        {{ formatLevel(level) }}
-      </h2>
-      <span class="text-sm text-muted-foreground">{{ totalCount }} flavors</span>
+  <section class="mb-8">
+    <div class="mb-4 flex flex-wrap items-baseline gap-3 border-b border-border pb-2">
+      <span class="num font-heading text-[13px] tracking-[0.16em] text-primary">{{ numeral }}</span>
+      <h2 class="font-heading text-[34px] font-normal">{{ formatLevel(level) }}</h2>
+      <span v-if="gloss" class="text-xs italic text-foreground/[0.58]">{{ gloss }}</span>
+      <span class="num ml-auto text-xs text-foreground/50">{{ totalCount }} descriptors</span>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div class="grid grid-cols-4 gap-6 max-lg:grid-cols-2">
       <FlavorCategoryGroup
         v-for="category in categories"
         :key="`${level}-${category.name}`"
@@ -38,5 +41,5 @@ function formatLevel(value: string) {
         :descriptors="category.descriptors"
       />
     </div>
-  </Card>
+  </section>
 </template>

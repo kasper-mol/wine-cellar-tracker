@@ -1,12 +1,6 @@
 <script setup lang="ts">
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import {
   Table,
   TableBody,
@@ -16,8 +10,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { computed } from 'vue'
-import { storeToRefs } from 'pinia'
+import { formatAdminDate } from '@/lib/format'
+import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 
 const emit = defineEmits<{
@@ -26,75 +20,60 @@ const emit = defineEmits<{
 }>()
 
 const wineRegionsStore = useWineRegionsStore()
+const wineAppellationsStore = useWineAppellationsStore()
 const { regions } = storeToRefs(wineRegionsStore)
+const { appellations } = storeToRefs(wineAppellationsStore)
 
-const hasRegions = computed(() => regions.value.length > 0)
+const appellationCount = computed(() => {
+  const map = new Map<string, number>()
+  for (const appellation of appellations.value) {
+    map.set(appellation.region_id, (map.get(appellation.region_id) ?? 0) + 1)
+  }
+  return map
+})
 </script>
 
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle>Available regions</CardTitle>
-      <CardDescription>
-        Click a row to select it for editing or remove it from the table.
-      </CardDescription>
-    </CardHeader>
-    <CardContent class="p-0">
-      <div class="max-h-[520px] overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead class="w-[40%]">Name</TableHead>
-              <TableHead class="w-[30%]">Country</TableHead>
-              <TableHead class="w-[20%]">Created</TableHead>
-              <TableHead class="w-[10%]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody v-if="hasRegions">
-            <TableRow v-for="region in regions" :key="region.id">
-              <TableCell class="font-medium">{{ region.name }}</TableCell>
-              <TableCell>{{ region.country?.name || '—' }}</TableCell>
-              <TableCell>
-                {{ new Date(region.created_at).toLocaleDateString() }}
-              </TableCell>
-              <TableCell class="text-right">
-                <div class="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    class="text-muted-foreground"
-                    @click.stop="emit('editRegion', region.id)"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    class="text-destructive hover:text-destructive"
-                    @click.stop="emit('deleteRegion', region.id)"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-          <TableBody v-else>
-            <TableRow>
-              <TableCell colspan="4">
-                <div class="p-6 text-center text-sm text-muted-foreground">
-                  No regions yet. Add your first entry.
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </CardContent>
-    <CardFooter>
-      <p class="text-sm text-muted-foreground">
-        Showing {{ regions.length }} region{{ regions.length === 1 ? '' : 's' }} from Supabase.
-      </p>
-    </CardFooter>
-  </Card>
+  <Table>
+    <TableHeader>
+      <TableRow class="hover:bg-transparent">
+        <TableHead class="w-[34px] text-right">№</TableHead>
+        <TableHead>Name</TableHead>
+        <TableHead class="w-[140px]">Country</TableHead>
+        <TableHead class="w-[120px] text-right">Appellations</TableHead>
+        <TableHead class="w-[120px]">Created</TableHead>
+        <TableHead class="w-[150px]" />
+      </TableRow>
+    </TableHeader>
+    <TableBody v-if="regions.length">
+      <TableRow v-for="(region, index) in regions" :key="region.id">
+        <TableCell class="num text-right text-xs text-foreground/40">{{ index + 1 }}</TableCell>
+        <TableCell class="font-semibold">{{ region.name }}</TableCell>
+        <TableCell class="text-[13px] text-foreground/[0.62]">
+          {{ region.country?.name || '—' }}
+        </TableCell>
+        <TableCell class="num text-right">{{ appellationCount.get(region.id) ?? 0 }}</TableCell>
+        <TableCell class="num text-[13px] text-foreground/[0.55]">
+          {{ formatAdminDate(region.created_at) }}
+        </TableCell>
+        <TableCell>
+          <span class="flex justify-end gap-1">
+            <Button variant="ghost" size="sm" @click.stop="emit('editRegion', region.id)">
+              Edit
+            </Button>
+            <Button variant="destructive" size="sm" @click.stop="emit('deleteRegion', region.id)">
+              Delete
+            </Button>
+          </span>
+        </TableCell>
+      </TableRow>
+    </TableBody>
+    <TableBody v-else>
+      <TableRow class="hover:bg-transparent">
+        <TableCell colspan="6" class="py-3 text-sm text-foreground/[0.55]">
+          No regions yet. Add your first entry.
+        </TableCell>
+      </TableRow>
+    </TableBody>
+  </Table>
 </template>

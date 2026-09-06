@@ -54,7 +54,10 @@ const loadingAppellations = ref(false)
 onMounted(async () => {
   try {
     // Only load config (small) + country list (small) upfront
-    await Promise.all([dwStore.loadConfig(), fetchWineCountries().then((c) => (countries.value = c))])
+    await Promise.all([
+      dwStore.loadConfig(),
+      fetchWineCountries().then((c) => (countries.value = c)),
+    ])
   } catch (e) {
     setError(e, 'Failed to load.')
   }
@@ -186,8 +189,8 @@ function clearFilters() {
       <h1 class="text-3xl font-semibold tracking-tight">Archetype mappings</h1>
       <p class="mt-1 text-muted-foreground">
         Every wine needs an archetype to get a computed window. Resolution order:
-        <strong>appellation</strong> → <strong>region fallback</strong> → no window.
-        Select a country to start editing.
+        <strong>appellation</strong> → <strong>region fallback</strong> → no window. Select a
+        country to start editing.
       </p>
     </div>
 
@@ -248,7 +251,12 @@ function clearFilters() {
             v-if="selectedRegionId || unmappedOnly"
             variant="ghost"
             size="sm"
-            @click="selectedRegionId = null; unmappedOnly = false; appellationSearch = ''; regionSearch = ''"
+            @click="
+              selectedRegionId = null;
+              unmappedOnly = false;
+              appellationSearch = '';
+              regionSearch = '';
+            "
           >
             Reset
           </Button>
@@ -257,13 +265,19 @@ function clearFilters() {
     </Card>
 
     <!-- Placeholder when nothing selected -->
-    <div v-if="!selectedCountryId" class="rounded-xl border border-dashed p-10 text-center text-muted-foreground">
+    <div
+      v-if="!selectedCountryId"
+      class="border-y border-border py-3 text-sm text-foreground/[0.55]"
+    >
       Select a country above to load its appellations and regions.
     </div>
 
     <template v-else>
       <!-- Loading indicator -->
-      <div v-if="loadingAppellations || loadingRegions" class="flex items-center gap-2 text-sm text-muted-foreground">
+      <div
+        v-if="loadingAppellations || loadingRegions"
+        class="flex items-center gap-2 text-sm text-muted-foreground"
+      >
         <Loader2 class="h-4 w-4 animate-spin" /> Loading…
       </div>
 
@@ -278,7 +292,11 @@ function clearFilters() {
             </CardDescription>
           </CardHeader>
           <CardContent class="space-y-3">
-            <Input v-model="appellationSearch" placeholder="Search appellations…" class="max-w-sm" />
+            <Input
+              v-model="appellationSearch"
+              placeholder="Search appellations…"
+              class="max-w-sm"
+            />
             <Table>
               <TableHeader>
                 <TableRow>
@@ -298,7 +316,9 @@ function clearFilters() {
                       :model-value="appellationArchetype(app.id)"
                       @update:model-value="onAssignAppellation(app.id, $event as string)"
                     >
-                      <SelectTrigger class="w-56"><SelectValue placeholder="— None —" /></SelectTrigger>
+                      <SelectTrigger class="w-56"
+                        ><SelectValue placeholder="— None —"
+                      /></SelectTrigger>
                       <SelectContent>
                         <SelectItem :value="NONE">— None —</SelectItem>
                         <SelectItem v-for="a in archetypes" :key="a.id" :value="a.id">
@@ -326,8 +346,8 @@ function clearFilters() {
               <span class="text-base font-normal text-muted-foreground">(fallback)</span>
             </CardTitle>
             <CardDescription>
-              {{ mappedRegionCount }}/{{ regions.length }} mapped in current view.
-              Used when no appellation mapping exists.
+              {{ mappedRegionCount }}/{{ regions.length }} mapped in current view. Used when no
+              appellation mapping exists.
             </CardDescription>
           </CardHeader>
           <CardContent class="space-y-3">
@@ -347,7 +367,9 @@ function clearFilters() {
                       :model-value="regionArchetype(region.id)"
                       @update:model-value="onAssignRegion(region.id, $event as string)"
                     >
-                      <SelectTrigger class="w-56"><SelectValue placeholder="— None —" /></SelectTrigger>
+                      <SelectTrigger class="w-56"
+                        ><SelectValue placeholder="— None —"
+                      /></SelectTrigger>
                       <SelectContent>
                         <SelectItem :value="NONE">— None —</SelectItem>
                         <SelectItem v-for="a in archetypes" :key="a.id" :value="a.id">

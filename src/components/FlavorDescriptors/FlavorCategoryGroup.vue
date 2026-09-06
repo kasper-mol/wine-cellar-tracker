@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import type { FlavorDescriptorRecord } from '@/types/flavorDescriptors'
 
 const props = defineProps<{
@@ -9,21 +7,22 @@ const props = defineProps<{
   descriptors: FlavorDescriptorRecord[]
 }>()
 
-const count = computed(() => props.descriptors.length)
+const sorted = computed(() => [...props.descriptors].sort((a, b) => a.name.localeCompare(b.name)))
 </script>
 
 <template>
-  <Card class="border-border bg-card p-5">
-    <div class="flex items-center justify-between gap-2">
-      <h3 class="font-serif text-2xl font-semibold text-card-foreground">
-        {{ title }}
-      </h3>
-      <span class="text-sm text-muted-foreground">{{ count }} flavors</span>
-    </div>
-    <div class="mt-4 flex flex-wrap gap-2">
-      <Badge v-for="descriptor in descriptors" :key="descriptor.id" variant="secondary">
+  <div>
+    <h3 class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-accent-700">
+      {{ title }}
+    </h3>
+    <ul class="m-0 list-none p-0">
+      <li
+        v-for="descriptor in sorted"
+        :key="descriptor.id"
+        class="border-b border-border py-1 text-sm"
+      >
         {{ descriptor.name }}
-      </Badge>
-    </div>
-  </Card>
+      </li>
+    </ul>
+  </div>
 </template>

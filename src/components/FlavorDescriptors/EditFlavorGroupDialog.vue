@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
 import { useFeedback } from '@/composables/useFeedback'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const props = defineProps<{
   group: { level: string; category: string | null } | null
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const flavorDescriptorsStore = useFlavorDescriptorsStore()
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const { descriptors } = storeToRefs(flavorDescriptorsStore)
 const { feedback, setError, clearFeedback } = useFeedback()
 
@@ -33,8 +35,7 @@ const groupDescriptors = computed(() => {
   return descriptors.value
     .filter(
       (d) =>
-        d.level === props.group?.level &&
-        (d.category ?? null) === (props.group?.category ?? null),
+        d.level === props.group?.level && (d.category ?? null) === (props.group?.category ?? null),
     )
     .sort((a, b) => a.name.localeCompare(b.name))
 })
@@ -122,7 +123,10 @@ async function handleAddDescriptor() {
 }
 
 async function handleRemoveDescriptor(id: string, name: string) {
-  const confirmed = window.confirm(`Remove ${name}? This action cannot be undone.`)
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Remove descriptor',
+    body: `${name} will be removed from this group. This cannot be undone.`,
+  })
   if (!confirmed) return
 
   try {
@@ -201,4 +205,5 @@ async function handleRemoveDescriptor(id: string, name: string) {
       </form>
     </DialogContent>
   </Dialog>
+  <ConfirmDialog ref="confirmRef" />
 </template>

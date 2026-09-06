@@ -1,57 +1,47 @@
 <script setup lang="ts">
-import { MapPin } from 'lucide-vue-next'
-import { Card } from '@/components/ui/card'
-
-const props = defineProps<{
+defineProps<{
+  countryName: string
   regions: Array<{
     id: string
     name: string
     appellationCount: number
+    holding: string
   }>
 }>()
 
 const emit = defineEmits<{ (e: 'select-region', id: string): void }>()
-
-function handleClick(id: string) {
-  emit('select-region', id)
-}
 </script>
 
 <template>
   <section>
-    <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Explore regions</p>
-        <h2 class="font-serif text-3xl font-semibold text-foreground">Wine Regions</h2>
-      </div>
-      <p class="text-sm text-muted-foreground">{{ regions.length }} regions found</p>
+    <h2 class="mb-4 mt-8 font-heading text-[30px] font-normal">Regions of {{ countryName }}</h2>
+
+    <div class="border-t border-border">
+      <a
+        v-for="(region, index) in regions"
+        :key="region.id"
+        href="#"
+        class="group grid grid-cols-[34px_1fr_130px_120px] items-baseline gap-4 border-b border-border px-2 py-[11px] transition-colors hover:bg-primary/5"
+        @click.prevent="emit('select-region', region.id)"
+      >
+        <span class="num text-right text-xs text-foreground/[0.38]">{{ index + 1 }}</span>
+        <span class="font-heading text-[21px] transition-colors group-hover:text-accent-700">
+          {{ region.name }}
+        </span>
+        <span class="num text-xs text-foreground/[0.55]">
+          {{ region.appellationCount }} appellations
+        </span>
+        <span
+          class="num text-right text-xs"
+          :class="region.holding === '—' ? 'text-foreground/30' : 'text-accent-700'"
+        >
+          {{ region.holding }}
+        </span>
+      </a>
     </div>
 
-    <div v-if="regions.length === 0" class="rounded-lg border border-dashed border-muted p-8 text-center text-muted-foreground">
-      No regions found for this country.
-    </div>
-    <div v-else class="grid gap-6">
-      <Card
-        v-for="region in regions"
-        :key="region.id"
-        class="group cursor-pointer overflow-hidden border-border bg-card p-6 transition-all hover:shadow-lg"
-        @click="handleClick(region.id)"
-      >
-        <div class="flex items-start gap-4">
-          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <MapPin class="h-6 w-6 text-primary" />
-          </div>
-          <div class="flex-1">
-            <h3 class="font-serif text-2xl font-semibold text-card-foreground transition-colors group-hover:text-primary">
-              {{ region.name }}
-            </h3>
-            <p class="mt-2 text-sm text-muted-foreground">
-              <span class="font-semibold text-foreground">{{ region.appellationCount }}</span>
-              appellations
-            </p>
-          </div>
-        </div>
-      </Card>
-    </div>
+    <p v-if="!regions.length" class="border-b border-border py-3 text-sm text-foreground/[0.55]">
+      No regions catalogued for this country yet.
+    </p>
   </section>
 </template>

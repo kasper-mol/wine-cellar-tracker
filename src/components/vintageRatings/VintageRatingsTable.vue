@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { AlertCircle } from 'lucide-vue-next'
-import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Seg, SegOption } from '@/components/ui/seg'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 import type { VintageRatingsBySource } from '@/types/vintageRatings'
 
@@ -60,14 +61,17 @@ const indicatorLegend: Record<string, string> = {
   D: 'Developing',
 }
 
+/** One monotonic scale off the accent ramp, replacing six unrelated hues. */
 const ratingRanges = [
-  { range: '96-100', label: 'Extraordinary', color: '#a47b00', min: 96, max: 100 },
-  { range: '90-95', label: 'Outstanding', color: '#d27745', min: 90, max: 95.99 },
-  { range: '80-89', label: 'Above Average to Excellent', color: '#c1121f', min: 80, max: 89.99 },
-  { range: '70-79', label: 'Average', color: '#7a0d1a', min: 70, max: 79.99 },
-  { range: '60-69', label: 'Below Average', color: '#8b1e8b', min: 60, max: 69.99 },
-  { range: '< 59', label: 'Appalling', color: '#3d246c', min: -Infinity, max: 59.99 },
+  { range: '96–100', label: 'Extraordinary', color: '#7d5411', min: 96, max: 100 },
+  { range: '90–95', label: 'Outstanding', color: '#a06f24', min: 90, max: 95.99 },
+  { range: '80–89', label: 'Above average to excellent', color: '#c28d41', min: 80, max: 89.99 },
+  { range: '70–79', label: 'Average', color: '#e1ad66', min: 70, max: 79.99 },
+  { range: '60–69', label: 'Below average', color: '#9b9797', min: 60, max: 69.99 },
+  { range: '< 59', label: 'Appalling', color: '#bab6b6', min: -Infinity, max: 59.99 },
 ]
+
+const NO_SCORE_COLOR = '#9b9797'
 
 const maturityFlags = [
   { code: 'C', label: indicatorLegend.C },
@@ -86,7 +90,7 @@ const props = defineProps<{
   title?: string
 }>()
 
-const titleText = computed(() => props.title ?? 'Vintage Chart')
+const titleText = computed(() => props.title ?? 'Vintage ratings')
 
 function extractNumericScore(value: string | number | null | undefined) {
   if (value === null || value === undefined) return null
@@ -149,14 +153,6 @@ const currentData = computed(() => {
 
 const ratings = computed(() => currentData.value?.ratings ?? [])
 
-const usedIndicators = computed(() => {
-  const set = new Set<string>()
-  for (const rating of ratings.value) {
-    if (rating.indicator) set.add(rating.indicator)
-  }
-  return Array.from(set)
-})
-
 const allFallbackRatings = computed(
   () => ratings.value.length > 0 && ratings.value.every((rating) => rating.fallback),
 )
@@ -171,145 +167,104 @@ const usingFallback = computed(
 const hasData = computed(() => effectiveData.value.length > 0)
 
 function getScoreColor(score: number | null | undefined): string {
-  if (score === null || score === undefined || Number.isNaN(score)) return '#6b7280'
+  if (score === null || score === undefined || Number.isNaN(score)) return NO_SCORE_COLOR
   const match = ratingRanges.find((range) => score >= range.min && score <= range.max)
-  return match?.color ?? '#6b7280'
+  return match?.color ?? NO_SCORE_COLOR
 }
 </script>
 
 <template>
-  <Card v-if="hasData" class="overflow-hidden border border-border bg-white">
-    <!-- Header -->
-    <div class="flex items-center justify-between border-b border-border bg-muted/30 px-6 py-4">
+  <section v-if="hasData">
+    <div class="mb-3 flex flex-wrap items-baseline justify-between gap-4">
+      <h2 class="font-heading text-[30px] font-normal">{{ titleText }}</h2>
       <div class="flex items-center gap-3">
-        <h3 class="font-serif text-lg font-semibold text-card-foreground">{{ titleText }}</h3>
-        <div
-          v-if="usingFallback"
-          class="flex items-center gap-1.5 rounded bg-amber-50 px-2.5 py-1"
-          data-testid="vintage-fallback-badge"
-        >
-          <AlertCircle class="h-3.5 w-3.5 text-amber-600" />
-          <span class="text-xs font-medium text-amber-700">Region data</span>
-        </div>
-      </div>
-
-      <Select v-if="effectiveData.length > 1" v-model="selectedSourceId">
-        <SelectTrigger class="h-8 w-[180px] text-sm">
-          <SelectValue placeholder="Select source" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem v-for="option in effectiveData" :key="option.id" :value="option.id">
+        <Badge v-if="usingFallback" data-testid="vintage-fallback-badge">Region data</Badge>
+        <Seg v-if="effectiveData.length > 1" v-model="selectedSourceId" name="vintage-source">
+          <SegOption v-for="option in effectiveData" :key="option.id" :value="option.id">
             {{ option.name }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+          </SegOption>
+        </Seg>
+      </div>
     </div>
 
-    <div class="grid gap-6 px-6 py-4 md:grid-cols-[1fr_4fr]">
-      <!-- Legend column -->
-      <div class="space-y-8">
-        <div>
-          <h4 class="mb-3 text-lg font-semibold text-slate-800">Rating ranges</h4>
-          <div class="space-y-3">
-            <div v-for="range in ratingRanges" :key="range.range" class="flex items-center gap-3">
+    <Table>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="w-[74px] text-right">Vintage</TableHead>
+          <TableHead class="w-[150px]">Rating</TableHead>
+          <TableHead class="w-[110px]">Structure</TableHead>
+          <TableHead class="w-[150px]">Maturity</TableHead>
+          <TableHead>Note</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="rating in ratings" :key="rating.year">
+          <TableCell class="num text-right font-heading text-[18px]">{{ rating.year }}</TableCell>
+          <TableCell>
+            <span class="inline-flex items-center gap-2">
               <span
-                class="h-6 w-6 rounded-sm"
-                :style="{ backgroundColor: range.color }"
-                aria-hidden="true"
-              />
-              <div class="text-sm leading-tight text-slate-700">
-                <div class="font-semibold">{{ range.range }}</div>
-                <div class="text-slate-600">{{ range.label }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h4 class="mb-3 text-lg font-semibold text-slate-800">Maturity</h4>
-          <div class="space-y-2 text-sm text-slate-700">
-            <div v-for="flag in maturityFlags" :key="flag.code" class="flex gap-3">
-              <span class="w-8 font-semibold text-slate-900">{{ flag.code }}</span>
-              <span class="text-slate-700">{{ flag.label }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Table column -->
-      <div class="overflow-hidden rounded-md border border-border">
-        <!-- Table Header -->
-        <div
-          class="grid grid-cols-[90px_140px_140px_160px_1fr] items-center gap-x-3 border-b border-border bg-white px-4 py-3 text-sm font-semibold text-slate-700"
-        >
-          <span>Vintage</span>
-          <span>Rating</span>
-          <span>Structure</span>
-          <span>Maturity</span>
-          <span>Description</span>
-        </div>
-
-        <!-- Table Rows -->
-        <div>
-          <div
-            v-for="(rating, index) in ratings"
-            :key="rating.year"
-            class="grid grid-cols-[90px_140px_140px_160px_1fr] gap-x-3 border-b border-border px-4 py-5"
-            :class="index === ratings.length - 1 ? 'border-b-0' : ''"
-          >
-            <!-- Year -->
-            <span class="text-base font-normal text-slate-800">{{ rating.year }}</span>
-
-            <!-- Rating -->
-            <span
-              v-if="rating.score !== null && rating.score !== undefined"
-              class="text-base font-bold"
-              :style="{ color: getScoreColor(rating.score) }"
-            >
-              {{ rating.score }}
-              <span
-                v-if="rating.indicator"
-                class="ml-1 inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-semibold text-foreground"
+                class="num font-heading text-[21px]"
+                :style="{ color: getScoreColor(rating.score) }"
               >
-                {{ rating.indicator }}
+                {{ rating.score ?? rating.rawLabel ?? '—' }}
               </span>
-            </span>
-            <span class="text-sm text-muted-foreground" v-else>
-              {{ rating.rawLabel ?? '—' }}
               <span
-                v-if="rating.indicator"
-                class="ml-1 inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-semibold text-foreground"
+                v-if="rating.score !== null"
+                class="relative inline-block h-1 w-16 bg-foreground/[0.08]"
               >
-                {{ rating.indicator }}
+                <span
+                  class="absolute inset-y-0 left-0"
+                  :style="{
+                    width: `${Math.max(0, Math.min(100, rating.score))}%`,
+                    background: getScoreColor(rating.score),
+                  }"
+                />
               </span>
+              <Badge v-if="rating.indicator" variant="secondary">{{ rating.indicator }}</Badge>
             </span>
-
-            <!-- Structure flags -->
-            <div class="flex flex-wrap gap-1">
-              <span
-                v-for="flag in rating.structureFlags"
-                :key="flag"
-                class="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-xs font-semibold text-foreground"
-              >
+          </TableCell>
+          <TableCell>
+            <span class="flex flex-wrap gap-1">
+              <Badge v-for="flag in rating.structureFlags" :key="flag" variant="secondary">
                 {{ flag }}
+              </Badge>
+              <span v-if="!rating.structureFlags.length" class="text-sm text-foreground/40">
+                —
               </span>
-              <span v-if="!rating.structureFlags.length" class="text-sm text-muted-foreground"
-                >—</span
-              >
-            </div>
-
-            <!-- Maturity -->
-            <span class="text-sm text-slate-700">
-              {{ rating.maturity || '—' }}
             </span>
+          </TableCell>
+          <TableCell class="text-[13px]">{{ rating.maturity || '—' }}</TableCell>
+          <TableCell class="text-[13px] leading-[1.6] text-foreground/[0.76]">
+            {{ rating.description || '—' }}
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
 
-            <!-- Description -->
-            <span class="text-sm leading-relaxed text-slate-600">
-              {{ rating.description || '—' }}
-            </span>
+    <div class="mt-6 grid grid-cols-2 gap-8 border-t border-border pt-4 max-md:grid-cols-1">
+      <div>
+        <h3 class="mb-3 text-[13px] uppercase tracking-[0.1em] text-accent-700">Rating ranges</h3>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs max-sm:grid-cols-1">
+          <div v-for="range in ratingRanges" :key="range.range" class="flex items-baseline gap-2">
+            <span
+              class="relative top-[-3px] h-[3px] w-3.5 flex-none"
+              :style="{ background: range.color }"
+              aria-hidden="true"
+            />
+            <span class="num w-[52px] flex-none font-semibold">{{ range.range }}</span>
+            <span class="text-foreground/60">{{ range.label }}</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 class="mb-3 text-[13px] uppercase tracking-[0.1em] text-accent-700">Maturity keys</h3>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs max-sm:grid-cols-1">
+          <div v-for="flag in maturityFlags" :key="flag.code" class="flex gap-2">
+            <span class="num w-[22px] flex-none font-semibold">{{ flag.code }}</span>
+            <span class="text-foreground/60">{{ flag.label }}</span>
           </div>
         </div>
       </div>
     </div>
-  </Card>
+  </section>
 </template>

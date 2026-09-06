@@ -28,11 +28,44 @@ const currentMap = computed(() => wineMapsStore.currentMap)
 const hasMap = computed(() => Boolean(currentMap.value))
 const hasSvg = computed(() => Boolean(svgMarkup.value))
 const NON_CLICKABLE_FILL = 'transparent'
-const OWNER_STROKE = '#000000'
-const AREA_BASE_FILL = '#c89a7a'
-const AREA_STROKE = '#dc2c2c'
-const HIGHLIGHT_FILL = '#dc2c2c'
-const HIGHLIGHT_STROKE = '#dc2c2c'
+
+/* Areas are drawn as a light tint plus a stroke — never a solid accent fill.
+ * The values come from the Classical ramps declared in src/assets/main.css. */
+const AREA_TOKENS = {
+  baseFill: '--accent-100',
+  baseStroke: '--accent-500',
+  hoverFill: '--accent-200',
+  hoverStroke: '--accent-600',
+  selectedFill: '--accent-200',
+  selectedStroke: '--accent-700',
+  inertStroke: '--neutral-400',
+} as const
+
+type AreaPalette = Record<keyof typeof AREA_TOKENS, string>
+type AreaState = 'base' | 'hover' | 'selected'
+
+const BASE_STROKE_WIDTH = '1'
+const INERT_STROKE_WIDTH = '0.75'
+const HOVER_STROKE_WIDTH = '1.4'
+const SELECTED_STROKE_WIDTH = '1.75'
+
+let palette: AreaPalette | null = null
+
+function readPalette(): AreaPalette {
+  const styles = getComputedStyle(document.documentElement)
+
+  return Object.fromEntries(
+    Object.entries(AREA_TOKENS).map(([role, token]) => {
+      const value = styles.getPropertyValue(token).trim()
+      return [role, value || (role.endsWith('Fill') ? 'transparent' : 'currentColor')]
+    }),
+  ) as AreaPalette
+}
+
+function getPalette(): AreaPalette {
+  palette ??= readPalette()
+  return palette
+}
 
 function isAreaVisible(area: unknown) {
   if (area && typeof area === 'object' && 'isVisible' in area) {
@@ -109,20 +142,10 @@ function getShapeElements(root: HTMLElement): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>('path, polygon, rect, circle, ellipse'))
 }
 
-function resolveBaseFill(shape: HTMLElement) {
-  const inlineFill = shape.style.fill?.trim() ?? ''
-  const attrFill = shape.getAttribute('fill')?.trim() ?? ''
-  const savedFill = shape.dataset.baseFill?.trim() ?? ''
-  const candidate = inlineFill || attrFill || savedFill
-  if (!candidate || candidate === 'none' || candidate === 'transparent') {
-    return AREA_BASE_FILL
-  }
-  return AREA_BASE_FILL
-}
-
 function applyShapeBaseStyles(shape: HTMLElement, nonClickableArea: boolean) {
-  const baseFill = nonClickableArea ? NON_CLICKABLE_FILL : resolveBaseFill(shape)
-  const baseStroke = nonClickableArea ? OWNER_STROKE : AREA_STROKE
+  const { baseFill: tintFill, baseStroke: tintStroke, inertStroke } = getPalette()
+  const baseFill = nonClickableArea ? NON_CLICKABLE_FILL : tintFill
+  const baseStroke = nonClickableArea ? inertStroke : tintStroke
 
   shape.dataset.baseFill = baseFill
   shape.dataset.baseStroke = baseStroke
@@ -136,8 +159,8 @@ function applyShapeBaseStyles(shape: HTMLElement, nonClickableArea: boolean) {
 
   shape.style.stroke = baseStroke
   shape.setAttribute('stroke', baseStroke)
-  shape.style.strokeWidth = nonClickableArea ? '1.25' : '1.1'
-  shape.style.transition = 'fill 150ms ease, opacity 150ms ease, filter 150ms ease'
+  shape.style.strokeWidth = nonClickableArea ? INERT_STROKE_WIDTH : BASE_STROKE_WIDTH
+  shape.style.transition = 'fill 150ms ease, stroke 150ms ease, stroke-width 150ms ease'
 }
 
 function applyShapeInteractivity(shape: HTMLElement, interactive: boolean) {
@@ -145,31 +168,38 @@ function applyShapeInteractivity(shape: HTMLElement, interactive: boolean) {
   shape.style.pointerEvents = interactive ? 'auto' : 'none'
 }
 
-function setAreaHighlight(svgAreaId: string, isActive: boolean) {
+function setAreaHighlight(svgAreaId: string, state: AreaState) {
   const el = getAreaElement(svgAreaId)
   if (!el) return
 
+  const { hoverFill, hoverStroke, selectedFill, selectedStroke } = getPalette()
   const shapes = getShapeElements(el)
-  for (const shape of shapes) {
-    shape.style.opacity = isActive ? '0.75' : '1'
-    shape.style.filter = isActive ? 'brightness(1.1)' : 'none'
 
-    if (isActive) {
-      shape.style.fill = HIGHLIGHT_FILL
-      shape.style.stroke = HIGHLIGHT_STROKE
-      shape.style.strokeWidth = ''
-    } else {
-      shape.style.stroke = shape.dataset.baseStroke ?? ''
-      shape.style.strokeWidth = ''
+  for (const shape of shapes) {
+    if (state === 'base') {
       shape.style.fill = shape.dataset.baseFill ?? shape.style.fill
+      shape.style.stroke = shape.dataset.baseStroke ?? ''
+      shape.style.strokeWidth = BASE_STROKE_WIDTH
+      continue
     }
+
+    const selected = state === 'selected'
+    shape.style.fill = selected ? selectedFill : hoverFill
+    shape.style.stroke = selected ? selectedStroke : hoverStroke
+    shape.style.strokeWidth = selected ? SELECTED_STROKE_WIDTH : HOVER_STROKE_WIDTH
   }
+}
+
+function resolveAreaState(svgAreaId: string): AreaState {
+  if (svgAreaId === hoveredAreaId.value) return 'hover'
+  if (svgAreaId === selectedAreaId.value) return 'selected'
+  return 'base'
 }
 
 function applyHighlightState() {
   for (const area of currentMap.value?.areas ?? []) {
     if (!isAreaVisible(area) || !isInteractiveArea(area)) continue
-    setAreaHighlight(area.svgAreaId, area.svgAreaId === activeAreaId.value)
+    setAreaHighlight(area.svgAreaId, resolveAreaState(area.svgAreaId))
   }
 }
 
@@ -197,6 +227,8 @@ function applyMapBindings() {
 
   const svg = mapContainer.value.querySelector('svg')
   if (!svg) return
+
+  palette = readPalette()
 
   svg.setAttribute('role', 'img')
   svg.setAttribute('aria-label', `${currentMap.value.name} wine map`)
@@ -283,9 +315,9 @@ watch(
 </script>
 
 <template>
-  <div class="rounded-xl border border-border bg-card/40 p-6">
+  <div class="border-y border-border py-4">
     <div class="mb-4">
-      <h2 class="font-serif text-2xl font-semibold text-foreground">Wine Map</h2>
+      <h2 class="font-heading text-2xl font-semibold text-foreground">Wine Map</h2>
       <p class="text-sm text-muted-foreground">Click an area to view its name.</p>
     </div>
 
@@ -299,22 +331,20 @@ watch(
         v-html="svgMarkup"
       />
 
-      <div v-if="showAreaList" class="rounded-lg border bg-card/60 p-4">
+      <div v-if="showAreaList" class="rounded-md border border-border p-3">
         <transition name="region-panel" mode="out-in">
           <div v-if="selectedAreaId" key="area-detail" class="space-y-4">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-xs uppercase tracking-wide text-muted-foreground">Selected area</p>
-                <h3 class="font-serif text-2xl font-semibold text-foreground">
+                <h3 class="font-heading text-2xl font-semibold text-foreground">
                   {{ selectedAreaDisplayName }}
                 </h3>
               </div>
               <Button variant="ghost" size="sm" @click="closeAreaPanel">Close</Button>
             </div>
 
-            <div
-              class="rounded-lg border border-dashed border-muted bg-background/70 p-4 text-sm text-muted-foreground"
-            >
+            <div class="border-y border-border py-3 text-sm text-foreground/[0.55]">
               Area details will appear here.
             </div>
           </div>
@@ -345,10 +375,7 @@ watch(
       </div>
     </div>
 
-    <div
-      v-else
-      class="rounded-lg border border-dashed border-muted p-6 text-sm text-muted-foreground"
-    >
+    <div v-else class="border-y border-border py-3 text-sm text-foreground/[0.55]">
       No map available for {{ mapKey }} yet.
     </div>
   </div>

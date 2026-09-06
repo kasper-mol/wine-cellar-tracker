@@ -2,201 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
-/* :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-
-  --wine-medium: 345 45% 36%;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-
-  --ring: 222.2 84% 4.9%;
-
-  --radius: 0.5rem;
-}
-
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 85.7% 97.3%;
-
-  --ring: 212.7 26.8% 83.9%;
-
-  --wine-medium: 345 45% 36%;
-} */
-
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-feature-settings:
-    'rlig' 1,
-    'calt' 1;
-  font-synthesis: none;
-  font-family:
-    'Inter',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
-  line-height: 1.5;
-  min-height: 100vh;
-}
-
-.container {
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-}
 @layer base {
   :root {
-    --background: 35 25% 97%;
-    --foreground: 0 5% 15%;
+    /* ── Classical roles ────────────────────────────────────────────────
+     * H S% L% triplets — Tailwind consumes them as hsl(var(--token)).
+     * Divider and muted text are stored as their opaque equivalents over
+     * the page ground so Tailwind opacity modifiers (border-border/60,
+     * text-muted-foreground/40) still resolve to valid colours. */
+    --background: 0 4% 95%; /* #f3f2f2 page ground */
+    --foreground: 40 5% 12%; /* #201f1d text */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 5% 15%;
+    --card: 0 4% 95%; /* cards are unfilled — Card.vue paints bg-transparent */
+    --card-foreground: 40 5% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 5% 15%;
+    --popover: 0 2% 92%;
+    --popover-foreground: 40 5% 12%;
 
-    --primary: 356 65% 35%;
-    --primary-foreground: 35 30% 95%;
+    --primary: 36 55% 46%; /* #b68235 the single accent */
+    --primary-foreground: 0 4% 95%;
 
-    --secondary: 35 40% 88%;
-    --secondary-foreground: 0 5% 15%;
+    --secondary: 0 2% 92%; /* #eae9e9 plate mats, dialog surface */
+    --secondary-foreground: 40 5% 12%;
 
-    --muted: 35 25% 92%;
-    --muted-foreground: 0 5% 45%;
+    --muted: 0 2% 92%;
+    --muted-foreground: 30 1% 49%; /* text @55% over the ground */
 
-    --accent: 42 85% 55%;
-    --accent-foreground: 0 5% 15%;
+    --accent: 33 100% 95%; /* accent-100 — tinted hover surfaces */
+    --accent-foreground: 33 80% 20%; /* accent-800 */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 35 30% 95%;
+    --destructive: 0 62% 38%;
+    --destructive-foreground: 0 4% 95%;
 
-    --border: 35 20% 85%;
-    --input: 35 20% 85%;
-    --ring: 356 65% 35%;
+    --border: 0 1% 82%; /* text @16% over the ground */
+    --input: 0 1% 82%;
+    --ring: 36 55% 46%;
 
-    --radius: 0.5rem;
+    --radius: 4px;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* ── Tonal ramps (OKLCH-derived, one shared lightness scale) ──────── */
+    --accent-100: #fff3e4;
+    --accent-200: #ffe3bf;
+    --accent-300: #facb8d;
+    --accent-400: #e1ad66;
+    --accent-500: #c28d41;
+    --accent-600: #a06f24;
+    --accent-700: #7d5411;
+    --accent-800: #5a3b0a;
+    --accent-900: #3a270d;
 
-    /* Wine-specific tokens */
-    --wine-deep: 356 75% 25%;
-    --wine-medium: 356 65% 45%;
-    --wine-light: 356 50% 65%;
-    --cream: 35 40% 92%;
-    --gold: 42 85% 55%;
-    --texture-overlay: 35 15% 95%;
+    --neutral-100: #f8f4f4;
+    --neutral-200: #eae7e7;
+    --neutral-300: #d7d3d3;
+    --neutral-400: #bab6b6;
+    --neutral-500: #9b9797;
+    --neutral-600: #7d7979;
+    --neutral-700: #605d5d;
+    --neutral-800: #444141;
+    --neutral-900: #2d2b2b;
 
-    /* Gradients */
-    --gradient-hero: linear-gradient(
-      135deg,
-      hsl(var(--wine-deep)) 0%,
-      hsl(var(--wine-medium)) 100%
-    );
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--cream)) 100%);
+    --font-heading: 'Cormorant Garamond', system-ui, serif;
+    --font-body: 'Lora', system-ui, serif;
 
-    /* Shadows */
-    --shadow-elegant: 0 10px 40px -10px hsl(var(--wine-deep) / 0.15);
-    --shadow-card: 0 4px 20px -4px hsl(var(--wine-deep) / 0.1);
-
-    /* Transitions */
-    --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .dark {
-    --background: 0 5% 10%;
-    --foreground: 35 30% 95%;
-
-    --card: 0 5% 12%;
-    --card-foreground: 35 30% 95%;
-
-    --popover: 0 5% 12%;
-    --popover-foreground: 35 30% 95%;
-
-    --primary: 356 65% 55%;
-    --primary-foreground: 0 5% 10%;
-
-    --secondary: 0 5% 18%;
-    --secondary-foreground: 35 30% 95%;
-
-    --muted: 0 5% 18%;
-    --muted-foreground: 35 15% 65%;
-
-    --accent: 42 85% 65%;
-    --accent-foreground: 0 5% 10%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 35 30% 95%;
-
-    --border: 0 5% 20%;
-    --input: 0 5% 20%;
-    --ring: 356 65% 55%;
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Elevation is a whisper — only the dialog earns lg. */
+    --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+    --shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+    --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
   }
 }
+
 @layer base {
   * {
     @apply border-border;
@@ -204,4 +77,78 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+body {
+  font-family: var(--font-body);
+  font-feature-settings:
+    'rlig' 1,
+    'calt' 1;
+  font-synthesis: none;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+}
+
+.container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1180px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Tabular figures wherever numbers stand as figures or columns:
+   kickers, ledger numerals, tables, charts, vintages, prices. NOT running prose —
+   Lora's tnum widens word-spaces and loosens paragraphs. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Section rules */
+.rule-dbl {
+  border-top: 3px double hsl(var(--border));
+}
+
+/* Themed focus — never the browser default */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+::selection {
+  background: color-mix(in srgb, hsl(var(--primary)) 30%, transparent);
+}
+
+/* The plate: every content photograph goes through this wrapper */
+.plate {
+  box-sizing: border-box;
+  filter: sepia(0.22) saturate(0.82) contrast(1.05);
+  border: 6px solid hsl(var(--secondary));
+  outline: 1px solid hsl(var(--border));
+}
+
+/* The empty plate — a placeholder until the photograph exists. The archival
+   grade belongs to photographs, so an empty plate carries no filter. */
+.plate-empty {
+  filter: none;
+}
+
+.plate-stripe {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--neutral-200) 0 6px,
+    var(--neutral-300) 6px 7px
+  );
 }

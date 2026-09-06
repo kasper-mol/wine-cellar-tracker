@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Map } from 'lucide-vue-next'
-import { Card } from '@/components/ui/card'
+import EditorialHeader from '@/components/editorial/EditorialHeader.vue'
+import FigureRail from '@/components/editorial/FigureRail.vue'
+import PlateFigure from '@/components/editorial/PlateFigure.vue'
+import { countryContent } from '@/content/countries'
+import { useCellarHoldings } from '@/composables/useCellarHoldings'
+import { numberToWordsCapitalized } from '@/lib/numberToWords'
+import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
-import { useWineAppellationsStore } from '@/stores/wineAppellations'
 
 defineOptions({
   name: 'CountriesPage',
 })
 
-const router = useRouter()
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
@@ -20,21 +22,40 @@ const wineAppellationsStore = useWineAppellationsStore()
 const { countries } = storeToRefs(wineCountriesStore)
 const { regions } = storeToRefs(wineRegionsStore)
 const { appellations } = storeToRefs(wineAppellationsStore)
+const { holdingForCountry } = useCellarHoldings()
 
-// Compute counts for each country
-const countriesWithCounts = computed(() => {
-  return countries.value.map((country) => {
-    const countryRegions = regions.value.filter((r) => r.country_id === country.id)
-    const countryAppellations = appellations.value.filter(
-      (a) => a.region?.country_id === country.id,
-    )
+const entries = computed(() =>
+  countries.value.map((country) => {
+    const countryRegions = regions.value.filter((region) => region.country_id === country.id)
+    const regionIds = new Set(countryRegions.map((region) => region.id))
+    const appellationCount = appellations.value.filter(
+      (appellation) =>
+        appellation.region?.country_id === country.id || regionIds.has(appellation.region_id),
+    ).length
+    const content = countryContent(country.name)
 
     return {
       ...country,
-      regionCount: countryRegions.length,
-      appellationCount: countryAppellations.length,
+      content,
+      figures: [
+        { label: 'Regions', value: countryRegions.length },
+        { label: 'Appellations', value: appellationCount },
+        { label: 'Labels held', value: holdingForCountry(country.id).labels },
+      ],
     }
-  })
+  }),
+)
+
+const lede = computed(() => {
+  const tail =
+    'regions, their protected designations, and the grapes permitted within each. Every bottle ' +
+    'in the cellar is traced back to an entry here.'
+  if (!countries.value.length) return `The producing countries are catalogued in full: their ${tail}`
+  return (
+    `${numberToWordsCapitalized(countries.value.length)} producing ` +
+    `${countries.value.length === 1 ? 'country is' : 'countries are'} catalogued in full: their ` +
+    tail
+  )
 })
 
 onMounted(async () => {
@@ -44,79 +65,52 @@ onMounted(async () => {
     wineAppellationsStore.loadAll(),
   ])
 })
-
-function navigateToCountry(id: string) {
-  router.push(`/country/${id}`)
-}
 </script>
 
 <template>
-  <div class="min-h-screen">
-    <div class="container">
-      <div class="mb-12">
-        <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2">
-          <Map class="h-4 w-4 text-primary" />
-          <span class="text-sm font-medium text-primary">Wine Countries</span>
-        </div>
-        <h1 class="mb-4 font-serif text-5xl font-bold text-foreground">Wine Producing Countries</h1>
-        <p class="max-w-3xl text-lg text-muted-foreground">
-          Explore wine-producing countries and dive into their regions, appellations, and wine
-          classifications.
+  <div>
+    <EditorialHeader
+      kicker="The Encyclopedia · Book I"
+      title="Countries"
+      :lede="lede"
+      :title-size="64"
+    />
+    <div class="rule-dbl mb-6 mt-6" />
+
+    <RouterLink
+      v-for="country in entries"
+      :key="country.id"
+      :to="{ name: 'country-detail', params: { id: country.id } }"
+      class="group grid grid-cols-[340px_1fr_200px] gap-6 border-b border-border py-6 max-lg:grid-cols-1"
+    >
+      <PlateFigure
+        :src="country.image_url"
+        :alt="`${country.name} vineyard`"
+        aspect="4 / 3"
+        :slot-label="country.content?.photographSlot ?? `vineyard photograph — ${country.name}`"
+      />
+      <div>
+        <p class="num mb-1.5 text-[11px] uppercase tracking-[0.16em] text-accent-700">
+          {{ country.code || '—' }}
+          <template v-if="country.content"> — {{ country.content.officialName }}</template>
+        </p>
+        <h2
+          class="mb-3 font-heading text-[46px] font-normal leading-none transition-colors group-hover:text-accent-700"
+        >
+          {{ country.name }}
+        </h2>
+        <p
+          v-if="country.content"
+          class="max-w-[48ch] text-justify text-sm leading-[1.7] text-foreground/75"
+        >
+          {{ country.content.blurb }}
         </p>
       </div>
+      <FigureRail :figures="country.figures" orientation="stacked" />
+    </RouterLink>
 
-      <div class="grid gap-8">
-        <Card
-          v-for="country in countriesWithCounts"
-          :key="country.id"
-          class="group flex cursor-pointer flex-col overflow-hidden border-border bg-card p-0 transition-all hover:shadow-lg md:flex-row"
-          @click="navigateToCountry(country.id)"
-        >
-          <div class="h-48 w-full overflow-hidden md:h-auto md:w-64">
-            <img
-              v-if="country.image_url"
-              :src="country.image_url"
-              :alt="country.name + ' landscape'"
-              class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-            <div
-              v-else
-              class="flex h-full w-full items-center justify-center bg-muted text-sm uppercase tracking-widest text-muted-foreground"
-            >
-              No Image
-            </div>
-          </div>
-          <div class="flex-1 p-6 md:p-8">
-            <div class="mb-4 flex items-start justify-between">
-              <div>
-                <h2
-                  class="mb-3 font-serif text-4xl font-semibold text-card-foreground transition-colors group-hover:text-primary"
-                >
-                  {{ country.name }}
-                </h2>
-                <p v-if="country.code" class="max-w-3xl text-lg text-muted-foreground">
-                  Country code: {{ country.code }}
-                </p>
-              </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                <Map class="h-6 w-6 text-primary" />
-              </div>
-            </div>
-
-            <div class="mt-6 flex items-center gap-6 text-sm text-muted-foreground">
-              <div>
-                <span class="font-semibold text-foreground">{{ country.regionCount }}</span>
-                regions
-              </div>
-              <div>
-                <span class="font-semibold text-foreground">{{ country.appellationCount }}</span>
-                appellations
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
+    <p v-if="!entries.length" class="border-b border-border py-3 text-sm text-foreground/[0.55]">
+      No countries catalogued yet.
+    </p>
   </div>
 </template>

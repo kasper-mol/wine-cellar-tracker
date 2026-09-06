@@ -4,45 +4,50 @@ import { storeToRefs } from 'pinia'
 import WineRegionsTable from '@/components/WineRegions/WineRegionsTable.vue'
 import CreateRegionDialog from '@/components/WineRegions/CreateRegionDialog.vue'
 import EditRegionDialog from '@/components/WineRegions/EditRegionDialog.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
+import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useFeedback } from '@/composables/useFeedback'
 
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
+const wineAppellationsStore = useWineAppellationsStore()
 const { regions } = storeToRefs(wineRegionsStore)
 const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const selectedRegionId = ref<string | null>(null)
-const deletingId = ref<string | null>(null)
 const editDialogRef = ref<InstanceType<typeof EditRegionDialog> | null>(null)
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 onMounted(async () => {
-  await wineCountriesStore.loadAll()
-  await wineRegionsStore.loadAll()
+  await Promise.all([
+    wineCountriesStore.loadAll(),
+    wineRegionsStore.loadAll(),
+    wineAppellationsStore.loadAll(),
+  ])
 })
 
 async function handleDelete(id: string) {
   const region = regions.value.find((r) => r.id === id)
-  const confirmed = window.confirm(
-    region
-      ? `Delete ${region.name}? This action cannot be undone.`
-      : 'Delete this region? This action cannot be undone.',
-  )
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Delete region',
+    body: region
+      ? `${region.name} will be removed from the register. This cannot be undone.`
+      : 'This region will be removed from the register. This cannot be undone.',
+  })
   if (!confirmed) return
 
-  deletingId.value = id
   clearFeedback()
-
   try {
     await wineRegionsStore.remove(id)
     if (selectedRegionId.value === id) selectedRegionId.value = regions.value[0]?.id ?? null
     setSuccess('Region removed.')
   } catch (error) {
     setError(error, 'Failed to delete region.')
-  } finally {
-    deletingId.value = null
   }
 }
 
@@ -53,23 +58,22 @@ function openEditDialog(id: string) {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Wine regions</p>
-        <h1 class="text-3xl font-semibold tracking-tight">Wine regions overview</h1>
-        <p class="text-muted-foreground">
-          Manage wine regions and connect them to their producing countries.
-        </p>
-      </div>
-      <div class="flex gap-2">
+  <div>
+    <ManageHeader
+      title="Wine regions"
+      note="Reference data is publicly readable and admin-writable. Each region belongs to a country and carries its own appellations."
+    >
+      <template #actions>
         <CreateRegionDialog />
-      </div>
-    </div>
+      </template>
+    </ManageHeader>
+
+    <ManageTabs />
 
     <WineRegionsTable @editRegion="openEditDialog($event)" @deleteRegion="handleDelete($event)" />
-    <FeedbackBanner :feedback="feedback" />
+    <FeedbackBanner :feedback="feedback" class="mt-4" />
 
     <EditRegionDialog ref="editDialogRef" :region-id="selectedRegionId" />
+    <ConfirmDialog ref="confirmRef" />
   </div>
 </template>

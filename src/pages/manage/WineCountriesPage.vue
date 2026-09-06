@@ -4,42 +4,44 @@ import { storeToRefs } from 'pinia'
 import WineCountriesTable from '@/components/WineCountries/WineCountriesTable.vue'
 import CreateCountryDialog from '@/components/WineCountries/CreateCountryDialog.vue'
 import EditCountryDialog from '@/components/WineCountries/EditCountryDialog.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
+import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
 import { useWineCountriesStore } from '@/stores/wineCountries'
+import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useFeedback } from '@/composables/useFeedback'
 
 const wineCountriesStore = useWineCountriesStore()
+const wineRegionsStore = useWineRegionsStore()
 const { countries } = storeToRefs(wineCountriesStore)
 const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const selectedCountryId = ref<string | null>(null)
-const deletingId = ref<string | null>(null)
 const editDialogRef = ref<InstanceType<typeof EditCountryDialog> | null>(null)
+const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 onMounted(async () => {
-  await wineCountriesStore.loadAll()
+  await Promise.all([wineCountriesStore.loadAll(), wineRegionsStore.loadAll()])
 })
 
 async function handleDelete(id: string) {
   const country = countries.value.find((c) => c.id === id)
-  const confirmed = window.confirm(
-    country
-      ? `Delete ${country.name}? This action cannot be undone.`
-      : 'Delete this country? This action cannot be undone.',
-  )
+  const confirmed = await confirmRef.value?.confirm({
+    title: 'Delete country',
+    body: country
+      ? `${country.name} and its place in the register will be removed. This cannot be undone.`
+      : 'This country will be removed from the register. This cannot be undone.',
+  })
   if (!confirmed) return
 
-  deletingId.value = id
   clearFeedback()
-
   try {
     await wineCountriesStore.remove(id)
     if (selectedCountryId.value === id) selectedCountryId.value = countries.value[0]?.id ?? null
     setSuccess('Country removed.')
   } catch (error) {
     setError(error, 'Failed to delete country.')
-  } finally {
-    deletingId.value = null
   }
 }
 
@@ -50,26 +52,25 @@ function openEditDialog(id: string) {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-sm uppercase tracking-wide text-muted-foreground">Wine regions</p>
-        <h1 class="text-3xl font-semibold tracking-tight">Wine countries overview</h1>
-        <p class="text-muted-foreground">
-          Maintain the list of wine-producing countries available throughout the app.
-        </p>
-      </div>
-      <CreateCountryDialog />
-    </div>
+  <div>
+    <ManageHeader
+      title="Wine countries"
+      note="Reference data is publicly readable and admin-writable. Countries anchor every region and appellation in the encyclopedia."
+    >
+      <template #actions>
+        <CreateCountryDialog />
+      </template>
+    </ManageHeader>
 
-    <div class="space-y-4">
-      <WineCountriesTable
-        @editCountry="openEditDialog($event)"
-        @deleteCountry="handleDelete($event)"
-      />
-      <FeedbackBanner :feedback="feedback" />
-    </div>
+    <ManageTabs />
+
+    <WineCountriesTable
+      @editCountry="openEditDialog($event)"
+      @deleteCountry="handleDelete($event)"
+    />
+    <FeedbackBanner :feedback="feedback" class="mt-4" />
 
     <EditCountryDialog ref="editDialogRef" :country-id="selectedCountryId" />
+    <ConfirmDialog ref="confirmRef" />
   </div>
 </template>

@@ -3,6 +3,16 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import ManageHeader from '@/components/manage/ManageHeader.vue'
+import ManageTabs from '@/components/manage/ManageTabs.vue'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useWineMapsStore } from '@/stores/wineMaps'
 
 const router = useRouter()
@@ -108,44 +118,38 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-6 p-6">
-    <div class="rounded-xl border border-border bg-card p-6">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <h1 class="font-serif text-3xl font-semibold text-foreground">Wine Maps</h1>
-          <p class="mt-1 text-sm text-muted-foreground">
-            Manage SVG-based wine geography maps and their area mappings.
-          </p>
-        </div>
-
+  <div>
+    <ManageHeader
+      title="Wine maps"
+      note="SVG geography maps and their area mappings. Each map's shapes are linked to countries, regions or appellations."
+    >
+      <template #actions>
         <Button @click="showCreateForm = !showCreateForm">
           {{ showCreateForm ? 'Cancel' : 'New map' }}
         </Button>
-      </div>
+      </template>
+    </ManageHeader>
 
-      <div v-if="showCreateForm" class="mt-6 rounded-lg border bg-muted/20 p-4">
+    <ManageTabs />
+
+    <div>
+      <div v-if="showCreateForm" class="mb-6 border-y border-border py-4">
         <div class="grid gap-4 md:grid-cols-2">
           <div class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >Name</label
-            >
+            <label class="text-xs text-foreground/70">Name</label>
             <Input v-model="form.name" placeholder="France" />
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >Key</label
-            >
+            <label class="text-xs text-foreground/70">Key</label>
             <Input v-model="form.key" placeholder="france-country" />
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >Scope</label
-            >
+            <label class="text-xs text-foreground/70">Scope</label>
             <select
               v-model="form.scope"
-              class="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              class="min-h-9 w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm"
             >
               <option value="country">country</option>
               <option value="region">region</option>
@@ -154,9 +158,7 @@ onMounted(async () => {
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >SVG file</label
-            >
+            <label class="text-xs text-foreground/70">SVG file</label>
             <input
               ref="fileInput"
               type="file"
@@ -167,12 +169,10 @@ onMounted(async () => {
           </div>
 
           <div v-if="form.scope === 'country'" class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >Owner country</label
-            >
+            <label class="text-xs text-foreground/70">Owner country</label>
             <select
               v-model="form.owner_wine_country_id"
-              class="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              class="min-h-9 w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm"
             >
               <option value="">None</option>
               <option v-for="item in wineMapsStore.countries" :key="item.id" :value="item.id">
@@ -182,12 +182,10 @@ onMounted(async () => {
           </div>
 
           <div v-if="form.scope === 'region'" class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >Owner region</label
-            >
+            <label class="text-xs text-foreground/70">Owner region</label>
             <select
               v-model="form.owner_wine_region_id"
-              class="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              class="min-h-9 w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm"
             >
               <option value="">None</option>
               <option v-for="item in wineMapsStore.regions" :key="item.id" :value="item.id">
@@ -197,12 +195,10 @@ onMounted(async () => {
           </div>
 
           <div v-if="form.scope === 'appellation'" class="space-y-1">
-            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >Owner appellation</label
-            >
+            <label class="text-xs text-foreground/70">Owner appellation</label>
             <select
               v-model="form.owner_wine_appellation_id"
-              class="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              class="min-h-9 w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm"
             >
               <option value="">None</option>
               <option v-for="item in wineMapsStore.appellations" :key="item.id" :value="item.id">
@@ -229,54 +225,51 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="rounded-xl border border-border bg-card p-4">
-      <div v-if="loading" class="py-10 text-sm text-muted-foreground">Loading maps...</div>
-
-      <div
-        v-else-if="!maps.length"
-        class="rounded-lg border border-dashed border-muted p-6 text-sm text-muted-foreground"
-      >
-        No wine maps found.
-      </div>
-
-      <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[1100px] border-collapse text-sm">
-          <thead>
-            <tr class="border-b text-left">
-              <th class="px-3 py-2 font-medium">Name</th>
-              <th class="px-3 py-2 font-medium">Key</th>
-              <th class="px-3 py-2 font-medium">Scope</th>
-              <th class="px-3 py-2 font-medium">Owner</th>
-              <th class="px-3 py-2 font-medium">Active</th>
-              <th class="px-3 py-2 font-medium">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr v-for="map in maps" :key="map.id" class="border-b transition hover:bg-muted/30">
-              <td class="px-3 py-2 font-medium text-foreground">{{ map.name }}</td>
-              <td class="px-3 py-2 font-mono text-xs text-muted-foreground">{{ map.key }}</td>
-              <td class="px-3 py-2">{{ map.scope }}</td>
-              <td class="px-3 py-2">
-                {{
-                  wineMapsStore.countries.find((item) => item.id === map.owner_wine_country_id)
-                    ?.name ||
-                  wineMapsStore.regions.find((item) => item.id === map.owner_wine_region_id)
-                    ?.name ||
-                  wineMapsStore.appellations.find(
-                    (item) => item.id === map.owner_wine_appellation_id,
-                  )?.name ||
-                  '—'
-                }}
-              </td>
-              <td class="px-3 py-2">{{ map.is_active ? 'Yes' : 'No' }}</td>
-              <td class="px-3 py-2">
-                <Button size="sm" @click="openMap(map.id)">Open</Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div v-if="loading" class="border-t border-border">
+      <div v-for="row in 4" :key="`map-skeleton-${row}`" class="border-b border-border py-2">
+        <span class="block h-4 w-full bg-foreground/[0.06]" />
       </div>
     </div>
+
+    <p v-else-if="!maps.length" class="border-y border-border py-3 text-sm text-foreground/[0.55]">
+      No wine maps found.
+    </p>
+
+    <Table v-else>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead class="w-[34px] text-right">№</TableHead>
+          <TableHead>Name</TableHead>
+          <TableHead class="w-[200px]">Key</TableHead>
+          <TableHead class="w-[120px]">Scope</TableHead>
+          <TableHead class="w-[200px]">Owner</TableHead>
+          <TableHead class="w-[90px]">Active</TableHead>
+          <TableHead class="w-[100px]" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="(map, index) in maps" :key="map.id">
+          <TableCell class="num text-right text-xs text-foreground/40">{{ index + 1 }}</TableCell>
+          <TableCell class="font-semibold">{{ map.name }}</TableCell>
+          <TableCell class="font-mono text-xs text-foreground/[0.55]">{{ map.key }}</TableCell>
+          <TableCell class="text-[13px] text-foreground/[0.62]">{{ map.scope }}</TableCell>
+          <TableCell class="text-[13px] text-foreground/[0.62]">
+            {{
+              wineMapsStore.countries.find((item) => item.id === map.owner_wine_country_id)?.name ||
+              wineMapsStore.regions.find((item) => item.id === map.owner_wine_region_id)?.name ||
+              wineMapsStore.appellations.find((item) => item.id === map.owner_wine_appellation_id)
+                ?.name ||
+              '—'
+            }}
+          </TableCell>
+          <TableCell class="text-[13px]">{{ map.is_active ? 'Yes' : 'No' }}</TableCell>
+          <TableCell>
+            <span class="flex justify-end">
+              <Button variant="ghost" size="sm" @click="openMap(map.id)">Open</Button>
+            </span>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
   </div>
 </template>

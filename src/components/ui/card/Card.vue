@@ -5,9 +5,13 @@ import { cn } from '@/lib/utils'
 <template>
   <div
     v-bind="$attrs"
-    :class="cn('rounded-2xl border bg-card text-card-foreground shadow-sm', $attrs.class as string)"
+    :class="
+      cn(
+        'flex flex-col gap-2 rounded-md border bg-transparent p-3 text-card-foreground shadow-none',
+        $attrs.class as string,
+      )
+    "
   >
     <slot />
   </div>
 </template>
-
