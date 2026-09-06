@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import Breadcrumb from '@/components/editorial/Breadcrumb.vue'
+import AppellationCopySection from '@/components/WineAppellations/AppellationCopySection.vue'
 import AppellationOverview from '@/components/WineAppellations/AppellationOverview.vue'
 import GrapeCompositionSection from '@/components/WineAppellations/GrapeCompositionSection.vue'
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
@@ -105,15 +106,29 @@ onMounted(async () => {
       :country-name="country?.name ?? 'Unknown country'"
       :grape-rules="grapeRules"
       :description="appellation.description"
+      :pronunciation="appellation.pronunciation"
+      :classification="appellation.classification"
+      :established-year="appellation.established_year"
       :labels-held="holding.labels"
       :bottles-held="holding.bottles"
     />
 
-    <GrapeCompositionSection
+    <AppellationCopySection
+      :signature-grapes="appellation.signature_grapes"
+      :wine-styles="appellation.wine_styles"
+      :style-summary="appellation.style_summary"
+      :climate-soil="appellation.climate_soil"
+      :drinking-window="appellation.drinking_window"
+      :food-pairings="appellation.food_pairings"
+      :fun-fact="appellation.fun_fact"
+    />
+
+    <!-- Temporary removal of GrapeCompositionSection -->
+    <!-- <GrapeCompositionSection
       :rules="grapeRules"
       :loading="grapeRulesLoading"
       :appellation-name="appellation.name"
-    />
+    /> -->
 
     <section v-if="cellarEntries.length">
       <h2 class="mb-3 mt-8 font-heading text-[30px] font-normal">In your cellar</h2>

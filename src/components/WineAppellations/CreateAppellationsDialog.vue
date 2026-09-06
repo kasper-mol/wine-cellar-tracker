@@ -12,6 +12,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
+import AppellationCopyFields from './AppellationCopyFields.vue'
+import { copyFormToPayload, emptyCopyForm } from '@/lib/appellationCopyForm'
 import ImageUploader from '@/components/ImageUploader.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { storeToRefs } from 'pinia'
@@ -38,6 +40,7 @@ const createForm = reactive({
   regionId: '',
   imageFile: null as File | null,
 })
+const copyForm = reactive(emptyCopyForm())
 
 const regionsForCountry = computed(() =>
   regions.value.filter((r) => r.country_id === selectedCountryId.value),
@@ -74,6 +77,7 @@ async function handleCreate() {
       name,
       region_id: createForm.regionId,
       imageFile: createForm.imageFile,
+      ...copyFormToPayload(copyForm),
     })
     createdAppellationId.value = created.id
     setSuccess('Appellation saved. You can now add grape rules below.')
@@ -92,6 +96,7 @@ function closeDialog() {
   createForm.name = ''
   createForm.regionId = ''
   createForm.imageFile = null
+  Object.assign(copyForm, emptyCopyForm())
   selectedCountryId.value = countries.value[0]?.id ?? null
   clearFeedback()
   createdAppellationId.value = null
@@ -137,6 +142,7 @@ defineExpose({ openDialog })
             <option v-for="r in regionsForCountry" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
         </div>
+        <AppellationCopyFields v-model="copyForm" :disabled="isCreated" />
         <GrapeAppellationManager :appellationId="createdAppellationId" />
         <ImageUploader v-model="createForm.imageFile" label="Appellation Image (optional)" />
         <FeedbackBanner :feedback="feedback" />

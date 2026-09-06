@@ -24,14 +24,14 @@ export const useMainStore = defineStore('main', () => {
     }
   }
 
-  async function addWine(payload: WineCreatePayload) {
-    const record = await createWine(payload)
+  async function addWine(payload: WineCreatePayload, grapeIds: string[] = []) {
+    const record = await createWine(payload, grapeIds)
     userWines.value = [wineRecordToUserWine(record), ...userWines.value]
     return record
   }
 
-  async function editWine(id: string, payload: WineUpdatePayload) {
-    const record = await updateWine(id, payload)
+  async function editWine(id: string, payload: WineUpdatePayload, grapeIds?: string[]) {
+    const record = await updateWine(id, payload, grapeIds)
     const updated = wineRecordToUserWine(record)
     userWines.value = userWines.value.map((wine) => (wine.id === id ? updated : wine))
     return record

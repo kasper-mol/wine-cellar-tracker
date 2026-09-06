@@ -65,6 +65,7 @@ const appellationsWithMeta = computed(() =>
       countryName: country?.name ?? 'Unknown country',
       countryId: country?.id ?? region?.country_id ?? null,
       grapeCount: appellation.grapes?.length ?? 0,
+      shortDescription: appellation.short_description,
     }
   }),
 )
@@ -82,7 +83,8 @@ const filteredAppellations = computed(() => {
       !query ||
       appellation.name.toLowerCase().includes(query) ||
       appellation.regionName.toLowerCase().includes(query) ||
-      appellation.countryName.toLowerCase().includes(query)
+      appellation.countryName.toLowerCase().includes(query) ||
+      (appellation.shortDescription?.toLowerCase().includes(query) ?? false)
 
     return matchesCountry && matchesRegion && matchesQuery
   })
@@ -136,7 +138,7 @@ onMounted(async () => {
             <Input
               v-model="searchQuery"
               type="search"
-              placeholder="Appellation, region or country…"
+              placeholder="Appellation, region, country or note…"
               class="w-[280px]"
               aria-label="Search appellations"
             />
@@ -174,19 +176,18 @@ onMounted(async () => {
         v-for="appellation in visibleAppellations"
         :key="appellation.id"
         :to="{ name: 'appellation-detail', params: { id: appellation.id } }"
-        class="group grid grid-cols-[1fr_128px_58px] items-baseline gap-3 border-b border-l-2 border-border px-2 py-[9px] transition-colors hover:bg-primary/5"
+        class="group block border-b border-l-2 border-border px-2 py-[9px] transition-colors hover:bg-primary/5"
         :class="
           heldAppellationIds.has(appellation.id) ? 'border-l-primary' : 'border-l-transparent'
         "
       >
-        <span
-          class="font-heading text-[18px] leading-[1.2] transition-colors group-hover:text-accent-700"
-        >
-          {{ appellation.name }}
-        </span>
-        <span class="text-xs text-foreground/[0.55]">{{ appellation.regionName }}</span>
-        <span class="num text-right text-xs text-foreground/45">
-          {{ appellation.grapeCount }} gr.
+        <span class="grid grid-cols-[1fr_128px_58px] items-baseline gap-3">
+          <span
+            class="font-heading text-[18px] leading-[1.2] transition-colors group-hover:text-accent-700"
+          >
+            {{ appellation.name }}
+          </span>
+          <span class="text-xs text-foreground/[0.55]">{{ appellation.regionName }}</span>
         </span>
       </RouterLink>
     </div>

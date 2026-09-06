@@ -1,10 +1,37 @@
 import { getSupabaseClient, throwIfError } from '@/lib/supabase'
 import { entityImagePath, uploadEntityImage } from '@/lib/storage'
 import type {
+  WineAppellationCopyInput,
   WineAppellationCreatePayload,
   WineAppellationRecord,
   WineAppellationUpdatePayload,
 } from '@/types/wineAppellations'
+
+const COPY_FIELDS = [
+  'short_description',
+  'description',
+  'pronunciation',
+  'classification',
+  'established_year',
+  'signature_grapes',
+  'wine_styles',
+  'style_summary',
+  'climate_soil',
+  'food_pairings',
+  'drinking_window',
+  'fun_fact',
+  'copy_status',
+] as const satisfies readonly (keyof WineAppellationCopyInput)[]
+
+/** Only the copy keys actually present are written, so an untouched field keeps its batch value. */
+function copyColumns(payload: WineAppellationCopyInput) {
+  const columns: Record<string, unknown> = {}
+  for (const field of COPY_FIELDS) {
+    if (payload[field] !== undefined) columns[field] = payload[field]
+  }
+  if (Object.keys(columns).length > 0) columns.copy_updated_at = new Date().toISOString()
+  return columns
+}
 
 const SELECT_COLUMNS = [
   'id',
@@ -12,8 +39,21 @@ const SELECT_COLUMNS = [
   'description',
   'image_url',
   'region_id',
+  'established_year',
   'created_at',
   'updated_at',
+  'short_description',
+  'pronunciation',
+  'classification',
+  'signature_grapes',
+  'wine_styles',
+  'style_summary',
+  'climate_soil',
+  'food_pairings',
+  'drinking_window',
+  'fun_fact',
+  'copy_status',
+  'copy_updated_at',
   'region:wine_regions(id, name, country_id, created_at, updated_at, country:wine_countries(*))',
   `grapes:grape_appellations(
     id,
@@ -35,7 +75,13 @@ export async function fetchWineAppellations() {
   return (data ?? []) as unknown as WineAppellationRecord[]
 }
 
-const LEAN_SELECT = 'id, name, region_id, region:wine_regions(id, name, country_id)'
+const LEAN_SELECT =
+  'id, name, region_id, short_description, region:wine_regions(id, name, country_id)'
+
+type LeanAppellation = Pick<
+  WineAppellationRecord,
+  'id' | 'name' | 'region_id' | 'short_description' | 'region'
+>
 
 /** Lean fetch by region — no grapes join, used by mappings page. */
 export async function fetchAppellationsByRegion(regionId: string) {
@@ -46,7 +92,7 @@ export async function fetchAppellationsByRegion(regionId: string) {
     .eq('region_id', regionId)
     .order('name')
   throwIfError(error)
-  return (data ?? []) as unknown as Pick<WineAppellationRecord, 'id' | 'name' | 'region_id' | 'region'>[]
+  return (data ?? []) as unknown as LeanAppellation[]
 }
 
 /** Lean fetch by country — resolves region IDs first, then filters. No grapes join. */
@@ -67,7 +113,7 @@ export async function fetchAppellationsByCountry(countryId: string) {
     .in('region_id', regionIds)
     .order('name')
   throwIfError(error)
-  return (data ?? []) as unknown as Pick<WineAppellationRecord, 'id' | 'name' | 'region_id' | 'region'>[]
+  return (data ?? []) as unknown as LeanAppellation[]
 }
 
 export async function createWineAppellation(payload: WineAppellationCreatePayload) {
@@ -77,12 +123,7 @@ export async function createWineAppellation(payload: WineAppellationCreatePayloa
     .insert({
       name: payload.name.trim(),
       region_id: payload.region_id,
-      description:
-        payload.description === null
-          ? null
-          : payload.description !== undefined
-            ? payload.description.trim() || null
-            : null,
+      ...copyColumns(payload),
     })
     .select(SELECT_COLUMNS)
     .single()
@@ -127,9 +168,7 @@ export async function updateWineAppellation(id: string, payload: WineAppellation
     .update({
       ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
       ...(payload.region_id !== undefined ? { region_id: payload.region_id } : {}),
-      ...(payload.description !== undefined
-        ? { description: payload.description === null ? null : payload.description.trim() || null }
-        : {}),
+      ...copyColumns(payload),
       ...(image_url ? { image_url } : {}),
     })
     .eq('id', id)

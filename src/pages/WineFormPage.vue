@@ -16,14 +16,17 @@ import {
 import { Seg, SegOption } from '@/components/ui/seg'
 import EditorialHeader from '@/components/editorial/EditorialHeader.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
+import ArchetypeSelect from '@/components/wines/ArchetypeSelect.vue'
+import GrapeMultiSelect from '@/components/wines/GrapeMultiSelect.vue'
 import PhaseMark from '@/components/wines/PhaseMark.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
 import { useMainStore } from '@/stores/main'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
+import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import type { DrinkingWindow } from '@/types/drinkingWindow'
-import type { UserWine, WineCreatePayload, WineStyle } from '@/types/wines'
+import type { GrapeRef, UserWine, WineCreatePayload, WineStyle } from '@/types/wines'
 
 defineOptions({
   name: 'WineFormPage',
@@ -42,12 +45,15 @@ const router = useRouter()
 const mainStore = useMainStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
+const grapeVarietiesStore = useWineGrapeVarietiesStore()
 const drinkingWindowStore = useDrinkingWindowStore()
 const { feedback, setError, clearFeedback } = useFeedback()
 
 const { userWines } = storeToRefs(mainStore)
 const { regions } = storeToRefs(wineRegionsStore)
 const { appellations } = storeToRefs(wineAppellationsStore)
+const { grapeVarieties } = storeToRefs(grapeVarietiesStore)
+const { archetypes } = storeToRefs(drinkingWindowStore)
 
 const editingId = computed(() => (route.params.id as string | undefined) ?? null)
 const isEditing = computed(() => editingId.value !== null)
@@ -66,7 +72,9 @@ const blank = () => ({
   readyToDrink: '',
   criticStart: '',
   criticEnd: '',
+  grapeIds: [] as string[],
   varietal: '',
+  archetypeId: null as string | null,
   vivinoLink: '',
 })
 
@@ -76,12 +84,39 @@ const appellationsForRegion = computed(() =>
   form.regionId ? appellations.value.filter((a) => a.region_id === form.regionId) : [],
 )
 
+const selectedGrapes = computed<GrapeRef[]>(() =>
+  form.grapeIds.flatMap((id) => {
+    const grape = grapeVarieties.value.find((g) => g.id === id)
+    return grape ? [{ id: grape.id, name: grape.name, color: grape.color }] : []
+  }),
+)
+
 function onRegionChange() {
   // drop the appellation if it no longer belongs to the chosen region
   if (!appellationsForRegion.value.some((a) => a.id === form.appellationId)) {
     form.appellationId = ''
   }
 }
+
+/* reka's Select can't hold '' as an item value, so "no region / no appellation"
+ * travels through the widget as a sentinel. Plenty of wines sit outside any
+ * appellation we hold, so both have to be clearable. */
+const NONE = '__none__'
+
+const regionSelection = computed({
+  get: () => form.regionId || NONE,
+  set: (value) => {
+    form.regionId = value === NONE ? '' : value
+    onRegionChange()
+  },
+})
+
+const appellationSelection = computed({
+  get: () => form.appellationId || NONE,
+  set: (value) => {
+    form.appellationId = value === NONE ? '' : value
+  },
+})
 
 function fillFrom(wine: UserWine) {
   form.name = wine.name
@@ -96,7 +131,9 @@ function fillFrom(wine: UserWine) {
   form.readyToDrink = wine.readyToDrink
   form.criticStart = wine.criticWindowStart ? String(wine.criticWindowStart) : ''
   form.criticEnd = wine.criticWindowEnd ? String(wine.criticWindowEnd) : ''
+  form.grapeIds = wine.grapes.map((grape) => grape.id)
   form.varietal = wine.varietal
+  form.archetypeId = wine.archetypeId
   form.vivinoLink = wine.vivinoLink
 }
 
@@ -104,6 +141,7 @@ onMounted(async () => {
   await Promise.all([
     wineRegionsStore.loadAll(),
     wineAppellationsStore.loadAll(),
+    grapeVarietiesStore.loadAll(),
     drinkingWindowStore.loadConfig(),
     userWines.value.length ? Promise.resolve() : mainStore.loadWines(),
   ])
@@ -129,6 +167,7 @@ function draftWine(): UserWine {
     name: form.name,
     producer: form.producer,
     varietal: form.varietal,
+    grapes: selectedGrapes.value,
     vintage: Number(form.vintage) || 0,
     style: (form.style || 'red') as WineStyle,
     quantity: Number(form.quantity) || 0,
@@ -142,6 +181,7 @@ function draftWine(): UserWine {
     regionName: region?.name ?? '',
     appellationId: form.appellationId || null,
     appellationName: appellation?.name ?? '',
+    archetypeId: form.archetypeId,
     cuvee: null,
     predikatLevel: null,
     sweetness: null,
@@ -155,6 +195,19 @@ function draftWine(): UserWine {
 function recomputeWindow() {
   computedWindow.value = drinkingWindowStore.computeWindow(draftWine())
 }
+
+/** The archetype the chosen appellation/region would give on its own — shown as
+ *  the label of the "auto" option so the override is an informed choice. */
+const inheritedArchetype = computed(() => {
+  const key = drinkingWindowStore.inheritedArchetypeKey(draftWine())
+  return key ? (archetypes.value.find((a) => a.key === key) ?? null) : null
+})
+
+const archetypeAutoLabel = computed(() =>
+  inheritedArchetype.value
+    ? `— from appellation: ${inheritedArchetype.value.name} —`
+    : '— none — no window will be computed',
+)
 
 watchDebounced(() => ({ ...form }), recomputeWindow, { debounce: 200 })
 
@@ -176,6 +229,7 @@ function buildPayload(name: string): WineCreatePayload {
     vivino_link: form.vivinoLink.trim() || null,
     region: form.regionId || null,
     appellation: form.appellationId || null,
+    archetype_id: form.archetypeId,
   }
 }
 
@@ -190,9 +244,9 @@ async function handleSubmit(addAnother = false) {
   clearFeedback()
   try {
     if (editingId.value) {
-      await mainStore.editWine(editingId.value, buildPayload(name))
+      await mainStore.editWine(editingId.value, buildPayload(name), form.grapeIds)
     } else {
-      await mainStore.addWine(buildPayload(name))
+      await mainStore.addWine(buildPayload(name), form.grapeIds)
     }
     if (addAnother) {
       Object.assign(form, blank())
@@ -243,7 +297,21 @@ async function handleSubmit(addAnother = false) {
             </div>
             <div>
               <Label class="mb-1.5 block text-xs text-foreground/70">Grape(s)</Label>
-              <Input v-model="form.varietal" placeholder="e.g. Nebbiolo" />
+              <GrapeMultiSelect
+                v-model="form.grapeIds"
+                :options="grapeVarieties"
+                placeholder="— none —"
+              />
+              <p class="mt-1.5 text-[11px] leading-[1.5] text-foreground/[0.52]">
+                From the grape library.
+              </p>
+            </div>
+            <div>
+              <Label class="mb-1.5 block text-xs text-foreground/70">Other grape(s)</Label>
+              <Input v-model="form.varietal" placeholder="e.g. Rossese — comma separated" />
+              <p class="mt-1.5 text-[11px] leading-[1.5] text-foreground/[0.52]">
+                Free text, for grapes not in the library.
+              </p>
             </div>
           </div>
         </fieldset>
@@ -257,11 +325,12 @@ async function handleSubmit(addAnother = false) {
           <div class="grid grid-cols-2 gap-x-4 gap-y-3 max-sm:grid-cols-1">
             <div>
               <Label class="mb-1.5 block text-xs text-foreground/70">Region</Label>
-              <Select v-model="form.regionId" @update:model-value="onRegionChange">
+              <Select v-model="regionSelection">
                 <SelectTrigger>
                   <SelectValue placeholder="— none —" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem :value="NONE">— none —</SelectItem>
                   <SelectItem v-for="region in regions" :key="region.id" :value="region.id">
                     {{ region.name }}
                   </SelectItem>
@@ -270,11 +339,12 @@ async function handleSubmit(addAnother = false) {
             </div>
             <div>
               <Label class="mb-1.5 block text-xs text-foreground/70">Appellation</Label>
-              <Select v-model="form.appellationId" :disabled="!form.regionId">
+              <Select v-model="appellationSelection" :disabled="!form.regionId">
                 <SelectTrigger>
                   <SelectValue placeholder="— none —" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem :value="NONE">— none —</SelectItem>
                   <SelectItem
                     v-for="appellation in appellationsForRegion"
                     :key="appellation.id"
@@ -285,7 +355,20 @@ async function handleSubmit(addAnother = false) {
                 </SelectContent>
               </Select>
               <p class="mt-1.5 text-[11px] leading-[1.5] text-foreground/[0.52]">
-                Filtered to the chosen region.
+                Filtered to the chosen region. Pick “— none —” for a wine outside any appellation.
+              </p>
+            </div>
+            <div class="col-span-2 max-sm:col-span-1">
+              <Label class="mb-1.5 block text-xs text-foreground/70">Ageing archetype</Label>
+              <ArchetypeSelect
+                v-model="form.archetypeId"
+                :options="archetypes"
+                :auto-label="archetypeAutoLabel"
+              />
+              <p class="mt-1.5 text-[11px] leading-[1.5] text-foreground/[0.52]">
+                The ageing curve the window is built from. Left on auto it follows the appellation
+                (or region); pick one to override it — useful for a wine outside any appellation we
+                hold.
               </p>
             </div>
           </div>
@@ -388,8 +471,8 @@ async function handleSubmit(addAnother = false) {
           </p>
         </template>
         <p v-else class="text-[13px] leading-[1.7] text-foreground/[0.72]">
-          No window yet — choose a region or appellation with a mapped archetype, or enter a
-          published critic window below.
+          No window yet — choose a region or appellation with a mapped archetype, pick an ageing
+          archetype yourself, or enter a published critic window below.
         </p>
 
         <hr class="my-4 h-px border-0 bg-border" />

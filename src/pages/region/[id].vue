@@ -39,7 +39,11 @@ const country = computed(() => {
 const regionAppellations = computed(() =>
   appellations.value
     .filter((a) => a.region_id === regionId)
-    .map((appellation) => ({ id: appellation.id, name: appellation.name })),
+    .map((appellation) => ({
+      id: appellation.id,
+      name: appellation.name,
+      shortDescription: appellation.short_description,
+    })),
 )
 
 onMounted(async () => {

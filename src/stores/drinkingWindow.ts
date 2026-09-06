@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { grapeLabel } from '@/types/wines'
 import type { UserWine } from '@/types/wines'
 import type {
   ArchetypeRecord,
@@ -80,7 +81,13 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
     })
   }
 
+  /** Archetype resolution order: the user's own pick wins, then the appellation
+   *  mapping, then the region mapping. */
   function mappedArchetypeKey(wine: UserWine): string | null {
+    if (wine.archetypeId) {
+      const byUser = archetypeKeyById(wine.archetypeId)
+      if (byUser) return byUser
+    }
     const byApp = wine.appellationId
       ? mappings.value.find((m) => m.appellation_id === wine.appellationId)
       : undefined
@@ -90,6 +97,13 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
       : undefined
     if (byRegion) return archetypeKeyById(byRegion.archetype_id) ?? null
     return null
+  }
+
+  /** The archetype key a wine would get from its appellation/region alone —
+   *  i.e. ignoring any user pick. Used by the intake form to label the
+   *  "auto" option. */
+  function inheritedArchetypeKey(wine: UserWine): string | null {
+    return mappedArchetypeKey({ ...wine, archetypeId: null })
   }
 
   /** Vintage rating for a wine's year — appellation match preferred over region. */
@@ -136,7 +150,7 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
     const input: WineInput = {
       vintage: wine.vintage || null,
       region: wine.appellationName || wine.regionName,
-      grape: wine.varietal,
+      grape: grapeLabel(wine),
       producer: wine.producer,
       // include the label so GC / predikat style hints can refine the archetype
       style: wine.name,
@@ -273,6 +287,7 @@ export const useDrinkingWindowStore = defineStore('drinkingWindowStore', () => {
     loaded,
     loadConfig,
     computeWindow,
+    inheritedArchetypeKey,
     addArchetype,
     removeArchetype,
     saveArchetype,

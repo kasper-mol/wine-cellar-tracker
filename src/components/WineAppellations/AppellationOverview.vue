@@ -11,9 +11,15 @@ const props = defineProps<{
   countryName: string
   grapeRules: GrapeAppellationRecord[]
   description: string | null
+  pronunciation: string | null
+  classification: string | null
+  establishedYear: number | null
   labelsHeld: number
   bottlesHeld: number
 }>()
+
+/** Legal tier and year are separate columns; either can stand alone on the meta line. */
+const hasMeta = computed(() => Boolean(props.classification) || props.establishedYear !== null)
 
 const permittedCount = computed(
   () => props.grapeRules.filter((rule) => rule.rule !== 'forbidden').length,
@@ -36,7 +42,25 @@ const twoColumn = computed(() => (props.description?.length ?? 0) > 240)
       <p class="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent-700">
         Appellation profile &nbsp;·&nbsp; {{ regionName }}, {{ countryName }}
       </p>
-      <h1 class="mb-4 font-heading text-[76px] font-normal leading-[0.95]">{{ name }}</h1>
+      <h1
+        class="font-heading text-[76px] font-normal leading-[0.95]"
+        :class="pronunciation || hasMeta ? 'mb-2' : 'mb-4'"
+      >
+        {{ name }}
+      </h1>
+
+      <p v-if="pronunciation" class="mb-2 text-sm italic text-foreground/[0.58]">
+        {{ pronunciation }}
+      </p>
+
+      <div
+        v-if="hasMeta"
+        class="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-y border-border py-2 text-[11px] uppercase tracking-[0.12em] text-foreground/[0.52]"
+      >
+        <span v-if="classification">{{ classification }}</span>
+        <span v-if="establishedYear !== null" class="num">Established {{ establishedYear }}</span>
+      </div>
+
       <p
         v-if="description"
         class="mb-4 hyphens-auto text-justify text-sm leading-[1.75] text-foreground/80"

@@ -17,6 +17,8 @@ import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
+import AppellationCopyFields from './AppellationCopyFields.vue'
+import { copyFormFromRecord, copyFormToPayload } from '@/lib/appellationCopyForm'
 import { useFeedback } from '@/composables/useFeedback'
 
 const props = defineProps<{ appellationId: string | null | undefined }>()
@@ -39,6 +41,7 @@ const editForm = reactive({
   currentImageUrl: '' as string | null,
 })
 const selectedCountryId = ref<string | null>(null)
+const copyForm = reactive(copyFormFromRecord(null))
 
 const selectedAppellation = computed(
   () => wineAppellationsStore.appellations.find((c) => c.id === props.appellationId) ?? null,
@@ -58,6 +61,7 @@ watch(
     editForm.regionId = appellation?.region_id ?? ''
     editForm.currentImageUrl = appellation?.image_url ?? ''
     editForm.imageFile = null
+    Object.assign(copyForm, copyFormFromRecord(appellation ?? null))
   },
   { immediate: true },
 )
@@ -76,6 +80,7 @@ async function handleUpdate() {
       name,
       region_id: editForm.regionId,
       imageFile: editForm.imageFile,
+      ...copyFormToPayload(copyForm),
     })
     closeDialog()
     emit('updated')
@@ -144,6 +149,7 @@ defineExpose({ openDialog })
             />
           </div>
         </div>
+        <AppellationCopyFields v-model="copyForm" />
         <GrapeAppellationManager :appellationId="appellationId ?? null" />
         <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
