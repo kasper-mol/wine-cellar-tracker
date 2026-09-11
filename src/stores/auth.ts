@@ -57,7 +57,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: new URL(import.meta.env.BASE_URL, window.location.origin).href,
       },
     })
     if (error) throw new Error(error.message)
