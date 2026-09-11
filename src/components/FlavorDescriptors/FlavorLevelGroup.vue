@@ -1,45 +1,51 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import FlavorCategoryGroup from '@/components/FlavorDescriptors/FlavorCategoryGroup.vue'
-import { levelGloss } from '@/content/flavorLevels'
-import type { FlavorDescriptorRecord } from '@/types/flavorDescriptors'
+import FlavorClusterRow from '@/components/FlavorDescriptors/FlavorClusterRow.vue'
+import { flavorLevelCopy } from '@/content/flavorLevels'
+import type { FlavorClusterWithDescriptors, FlavorLevel } from '@/types/flavorDescriptors'
 
 const props = defineProps<{
-  level: string
+  level: FlavorLevel
   numeral: string
-  categories: { name: string; descriptors: FlavorDescriptorRecord[] }[]
+  clusters: FlavorClusterWithDescriptors[]
 }>()
 
+const copy = computed(() => flavorLevelCopy(props.level))
+
 const totalCount = computed(() =>
-  props.categories.reduce((sum, category) => sum + category.descriptors.length, 0),
+  props.clusters.reduce((sum, cluster) => sum + cluster.descriptors.length, 0),
 )
-
-const gloss = computed(() => levelGloss(props.level))
-
-function formatLevel(value: string) {
-  return value
-    .replace(/_/g, ' ')
-    .trim()
-    .replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-}
 </script>
 
 <template>
-  <section class="mb-8">
-    <div class="mb-4 flex flex-wrap items-baseline gap-3 border-b border-border pb-2">
+  <section class="mb-12">
+    <div class="mb-1 flex flex-wrap items-baseline gap-3 border-b border-border pb-2">
       <span class="num font-heading text-[13px] tracking-[0.16em] text-primary">{{ numeral }}</span>
-      <h2 class="font-heading text-[34px] font-normal">{{ formatLevel(level) }}</h2>
-      <span v-if="gloss" class="text-xs italic text-foreground/[0.58]">{{ gloss }}</span>
-      <span class="num ml-auto text-xs text-foreground/50">{{ totalCount }} descriptors</span>
+      <h2 class="font-heading text-[34px] font-normal">{{ copy.title }}</h2>
+      <span class="num ml-auto text-xs text-foreground/50">
+        {{ clusters.length }} clusters · {{ totalCount }} descriptors
+      </span>
     </div>
+    <p class="mb-5 text-[13px] italic text-foreground/[0.62]">{{ copy.subtitle }}</p>
 
-    <div class="grid grid-cols-4 gap-6 max-lg:grid-cols-2">
-      <FlavorCategoryGroup
-        v-for="category in categories"
-        :key="`${level}-${category.name}`"
-        :title="category.name"
-        :descriptors="category.descriptors"
-      />
+    <div class="grid grid-cols-[220px_1fr] gap-x-10 max-lg:grid-cols-1">
+      <aside class="max-lg:mb-4">
+        <p class="num mb-2 text-[11px] uppercase tracking-[0.18em] text-foreground/50">
+          Key questions
+        </p>
+        <ul class="m-0 list-none p-0 text-[13px] leading-[1.6] text-foreground/[0.7]">
+          <li v-for="question in copy.questions" :key="question" class="mb-1">
+            {{ question }}
+          </li>
+        </ul>
+      </aside>
+
+      <div class="border-t border-border">
+        <FlavorClusterRow v-for="cluster in clusters" :key="cluster.id" :cluster="cluster" />
+        <p v-if="!clusters.length" class="py-3 text-sm italic text-foreground/[0.45]">
+          No clusters at this level yet.
+        </p>
+      </div>
     </div>
   </section>
 </template>

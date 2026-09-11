@@ -1,32 +1,29 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
-import FlavorDescriptorGroupsTable from '@/components/FlavorDescriptors/FlavorDescriptorGroupsTable.vue'
-import EditFlavorGroupDialog from '@/components/FlavorDescriptors/EditFlavorGroupDialog.vue'
-import CreateFlavorGroupDialog from '@/components/FlavorDescriptors/CreateFlavorGroupDialog.vue'
+import FlavorClustersTable from '@/components/FlavorDescriptors/FlavorClustersTable.vue'
+import EditFlavorClusterDialog from '@/components/FlavorDescriptors/EditFlavorClusterDialog.vue'
+import CreateFlavorClusterDialog from '@/components/FlavorDescriptors/CreateFlavorClusterDialog.vue'
 import ManageHeader from '@/components/manage/ManageHeader.vue'
 import ManageTabs from '@/components/manage/ManageTabs.vue'
+import type { FlavorClusterWithDescriptors } from '@/types/flavorDescriptors'
 
 const flavorDescriptorsStore = useFlavorDescriptorsStore()
 
-const selectedGroup = ref<{ level: string; category: string | null } | null>(null)
-const editDialogRef = ref<InstanceType<typeof EditFlavorGroupDialog> | null>(null)
+const selectedClusterId = ref<string | null>(null)
+const editDialogRef = ref<InstanceType<typeof EditFlavorClusterDialog> | null>(null)
 
 onMounted(async () => {
   await flavorDescriptorsStore.loadAll()
 })
 
-function handleEditGroup(payload: { level: string; category: string | null }) {
-  selectedGroup.value = payload
+function handleEditCluster(cluster: FlavorClusterWithDescriptors) {
+  selectedClusterId.value = cluster.id
   editDialogRef.value?.openDialog()
 }
 
-function handleGroupUpdated(payload: { level: string; category: string | null }) {
-  selectedGroup.value = payload
-}
-
-function handleGroupCleared() {
-  selectedGroup.value = null
+function handleClusterRemoved() {
+  selectedClusterId.value = null
 }
 </script>
 
@@ -34,22 +31,21 @@ function handleGroupCleared() {
   <div>
     <ManageHeader
       title="Flavour descriptors"
-      note="Descriptors are grouped by level and category, as the aroma wheel arranges them."
+      note="The WSET Level 3 Wine-Lexicon: descriptors grouped into clusters under primary, secondary and tertiary."
     >
       <template #actions>
-        <CreateFlavorGroupDialog />
+        <CreateFlavorClusterDialog />
       </template>
     </ManageHeader>
 
     <ManageTabs />
 
-    <FlavorDescriptorGroupsTable @editGroup="handleEditGroup" />
+    <FlavorClustersTable @editCluster="handleEditCluster" />
 
-    <EditFlavorGroupDialog
+    <EditFlavorClusterDialog
       ref="editDialogRef"
-      :group="selectedGroup"
-      @groupUpdated="handleGroupUpdated"
-      @groupCleared="handleGroupCleared"
+      :cluster-id="selectedClusterId"
+      @clusterRemoved="handleClusterRemoved"
     />
   </div>
 </template>

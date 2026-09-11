@@ -5,54 +5,21 @@ import EditorialHeader from '@/components/editorial/EditorialHeader.vue'
 import FlavorLevelGroup from '@/components/FlavorDescriptors/FlavorLevelGroup.vue'
 import { toRoman } from '@/lib/numberToWords'
 import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
-import type { FlavorDescriptorRecord } from '@/types/flavorDescriptors'
 
 defineOptions({
   name: 'FlavorsPage',
 })
 
 const flavorDescriptorsStore = useFlavorDescriptorsStore()
-const { descriptors, loading } = storeToRefs(flavorDescriptorsStore)
-
-const groupedLevels = computed(() => {
-  const levels = new Map<string, Map<string, FlavorDescriptorRecord[]>>()
-
-  for (const descriptor of descriptors.value) {
-    const level = descriptor.level
-    const category = descriptor.category?.trim() || 'Uncategorized'
-
-    if (!levels.has(level)) {
-      levels.set(level, new Map())
-    }
-
-    const categories = levels.get(level)!
-    if (!categories.has(category)) {
-      categories.set(category, [])
-    }
-
-    categories.get(category)!.push(descriptor)
-  }
-
-  return Array.from(levels, ([level, categories], index) => ({
-    level,
-    numeral: `${toRoman(index + 1)}.`,
-    categories: Array.from(categories, ([name, items]) => ({
-      name,
-      descriptors: items,
-    })).sort((a, b) => a.name.localeCompare(b.name)),
-  }))
-})
-
-const categoryCount = computed(() =>
-  groupedLevels.value.reduce((sum, level) => sum + level.categories.length, 0),
-)
+const { lexicon, clusters, descriptors, loading } = storeToRefs(flavorDescriptorsStore)
 
 const lede = computed(() => {
-  const wheel =
-    'The descriptor set, arranged as the aroma wheel arranges it: primary aromas from the grape, ' +
-    'secondary from winemaking, tertiary from age.'
-  if (!descriptors.value.length) return wheel
-  return `${wheel} ${descriptors.value.length} descriptors across ${categoryCount.value} categories.`
+  const intro =
+    'The WSET Level 3 Wine-Lexicon: think in terms of primary, secondary and tertiary. ' +
+    'Primary aromas come from the grape and fermentation, secondary from post-fermentation ' +
+    'winemaking, tertiary from maturation.'
+  if (!descriptors.value.length) return intro
+  return `${intro} ${descriptors.value.length} descriptors across ${clusters.value.length} clusters.`
 })
 
 onMounted(async () => {
@@ -78,20 +45,23 @@ onMounted(async () => {
     </div>
 
     <p
-      v-else-if="!groupedLevels.length"
+      v-else-if="!clusters.length"
       class="border-y border-border py-3 text-sm text-foreground/[0.55]"
     >
-      No flavour descriptors have been added yet.
+      No flavour clusters have been added yet.
     </p>
 
     <template v-else>
       <FlavorLevelGroup
-        v-for="level in groupedLevels"
-        :key="level.level"
-        :level="level.level"
-        :numeral="level.numeral"
-        :categories="level.categories"
+        v-for="(entry, index) in lexicon"
+        :key="entry.level"
+        :level="entry.level"
+        :numeral="`${toRoman(index + 1)}.`"
+        :clusters="entry.clusters"
       />
+      <p class="mt-4 text-[12px] italic text-foreground/[0.5]">
+        The lexicon is a prompt and a guide, not a limit: any accurate descriptor is acceptable.
+      </p>
     </template>
   </div>
 </template>

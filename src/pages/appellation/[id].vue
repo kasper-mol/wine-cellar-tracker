@@ -4,13 +4,16 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import Breadcrumb from '@/components/editorial/Breadcrumb.vue'
 import AppellationCopySection from '@/components/WineAppellations/AppellationCopySection.vue'
+import AppellationFlavorSection from '@/components/WineAppellations/AppellationFlavorSection.vue'
 import AppellationOverview from '@/components/WineAppellations/AppellationOverview.vue'
 import GrapeCompositionSection from '@/components/WineAppellations/GrapeCompositionSection.vue'
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
 import PhaseMark from '@/components/wines/PhaseMark.vue'
 import { useCellarHoldings } from '@/composables/useCellarHoldings'
 import { formatWindow } from '@/lib/cellar'
+import { useAppellationFlavorsStore } from '@/stores/appellationFlavors'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
+import { useFlavorDescriptorsStore } from '@/stores/flavorDescriptors'
 import { useGrapeAppellationsStore } from '@/stores/grapeAppellations'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
@@ -28,11 +31,14 @@ const wineRegionsStore = useWineRegionsStore()
 const wineCountriesStore = useWineCountriesStore()
 const grapeAppellationsStore = useGrapeAppellationsStore()
 const drinkingWindowStore = useDrinkingWindowStore()
+const appellationFlavorsStore = useAppellationFlavorsStore()
+const flavorDescriptorsStore = useFlavorDescriptorsStore()
 
 const { appellations } = storeToRefs(wineAppellationsStore)
 const { regions } = storeToRefs(wineRegionsStore)
 const { countries } = storeToRefs(wineCountriesStore)
 const { loading: grapeRulesLoadingMap } = storeToRefs(grapeAppellationsStore)
+const { loading: flavorLoadingMap } = storeToRefs(appellationFlavorsStore)
 const { holdingForAppellation, winesForAppellation } = useCellarHoldings()
 
 const appellationId = route.params.id as string
@@ -42,6 +48,8 @@ const configReady = ref(false)
 const appellation = computed(() => appellations.value.find((a) => a.id === appellationId))
 const grapeRules = computed(() => grapeAppellationsStore.rulesForAppellation(appellationId))
 const grapeRulesLoading = computed(() => grapeRulesLoadingMap.value[appellationId] ?? false)
+const flavorRows = computed(() => appellationFlavorsStore.forAppellation(appellationId))
+const flavorLoading = computed(() => flavorLoadingMap.value[appellationId] ?? false)
 
 const region = computed(() => {
   if (!appellation.value) return null
@@ -72,6 +80,8 @@ onMounted(async () => {
     wineRegionsStore.loadAll(),
     wineCountriesStore.loadAll(),
     grapeAppellationsStore.fetchForAppellation(appellationId),
+    appellationFlavorsStore.fetchForAppellation(appellationId),
+    flavorDescriptorsStore.loadAll(),
     drinkingWindowStore.loadConfig().then(() => {
       configReady.value = true
     }),
@@ -122,6 +132,8 @@ onMounted(async () => {
       :food-pairings="appellation.food_pairings"
       :fun-fact="appellation.fun_fact"
     />
+
+    <AppellationFlavorSection :rows="flavorRows" :loading="flavorLoading" />
 
     <!-- Temporary removal of GrapeCompositionSection -->
     <!-- <GrapeCompositionSection

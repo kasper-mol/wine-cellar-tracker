@@ -45,6 +45,9 @@ Pages in `src/pages/` consume stores. The `src/stores/main.ts` store holds the u
 **Wine maps subsystem** (`src/services/wineMaps.ts`, `src/types/wineMaps.ts`, `src/stores/wineMaps.ts`):
 SVG-based interactive maps stored in `public/maps/`. A `WineMapDefinition` owns versioned SVG assets (`WineMapAssetVersion`) and a set of `WineMapAreaMapping` rows that link SVG element IDs (parsed via `inkscape:label` or `id`) to wine countries/regions/appellations. `importWineMapAreas()` fetches the SVG at runtime, extracts shape IDs, and upserts new rows. The legacy `src/config/countryMapConfig.ts` approach (hardcoded SVG import + fill config) is superseded by this DB-driven system.
 
+**Flavour lexicon** (`src/types/flavorDescriptors.ts`, `src/services/flavorDescriptors.ts`, `src/stores/flavorDescriptors.ts`, `src/content/flavorLevels.ts`):
+Follows the WSET Level 3 Wine-Lexicon: `flavor_level` enum (primary/secondary/tertiary) → `flavor_clusters` (e.g. "Stone fruit", "Oak"; tertiary clusters carry a `colour` white/red variant) → `flavor_descriptors` (unique per cluster, optional `note` like "juice or zest?"). Level copy (subtitle, key questions) lives in code, not DB. `appellation_flavors` links appellation × `wine_style` × descriptor (typical profile, shown on the appellation page, edited via `AppellationFlavorManager`); seeded per country in `supabase/migrations/*_seed_appellation_flavors_*.sql`, keyed on names not IDs so batches are rerunnable.
+
 **UI components:** shadcn-style primitives under `src/components/ui/` built on `reka-ui`. Shared components are in `src/components/`. The `cn()` utility (`src/lib/utils.ts`) merges Tailwind classes.
 
 **Path alias:** `@/` maps to `src/`.
