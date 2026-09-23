@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { useLocalStorage } from '@vueuse/core'
+import { useLocalStorage, useMediaQuery } from '@vueuse/core'
 import { ArrowDown, ArrowUp, ChevronsUpDown, Pencil, Plus, Trash2, Wine } from 'lucide-vue-next'
 import {
   Table,
@@ -55,6 +55,10 @@ const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const configReady = ref(false)
 
 const inventoryView = useLocalStorage<'table' | 'plates'>('cellartracker:inventoryView', 'table')
+
+/** The ledger table needs the width; on a phone the plates are the only view. */
+const tableFits = useMediaQuery('(min-width: 640px)')
+const effectiveView = computed(() => (tableFits.value ? inventoryView.value : 'plates'))
 const windowChartOpen = useLocalStorage('cellartracker:windowChartOpen', true)
 
 onMounted(async () => {
@@ -262,19 +266,19 @@ async function handleDelete(wine: UserWine) {
       <div class="mb-4 flex flex-wrap items-baseline gap-3">
         <span class="num font-heading text-[13px] tracking-[0.16em] text-primary">III.</span>
         <h2 class="font-heading text-[34px] font-normal">The inventory</h2>
-        <div class="ml-auto flex flex-wrap items-center gap-3">
+        <div class="ml-auto flex flex-wrap items-center gap-3 max-sm:ml-0 max-sm:w-full">
           <Input
             v-model="searchQuery"
             type="search"
             placeholder="Search label, producer, appellation…"
-            class="w-[290px]"
+            class="w-[290px] max-sm:w-full"
             aria-label="Search wines"
           />
-          <Seg v-model="inventoryView" name="inventory-view">
+          <Seg v-model="inventoryView" name="inventory-view" class="max-sm:hidden">
             <SegOption value="table">Table</SegOption>
             <SegOption value="plates">Plates</SegOption>
           </Seg>
-          <Button @click="openCreate">
+          <Button class="max-sm:ml-auto" @click="openCreate">
             <Plus class="h-3.5 w-3.5" :stroke-width="1.5" />
             Add wine
           </Button>
@@ -287,7 +291,7 @@ async function handleDelete(wine: UserWine) {
         </div>
       </div>
 
-      <template v-else-if="inventoryView === 'table'">
+      <template v-else-if="effectiveView === 'table'">
         <Table>
           <TableCaption>{{ tableCaption }}</TableCaption>
           <TableHeader>
@@ -475,7 +479,13 @@ async function handleDelete(wine: UserWine) {
       </template>
 
       <template v-else>
-        <InventoryPlates v-if="visibleEntries.length" :entries="visibleEntries" />
+        <InventoryPlates
+          v-if="visibleEntries.length"
+          :entries="visibleEntries"
+          @drink="openDrink"
+          @edit="openEdit"
+          @delete="handleDelete"
+        />
         <p v-else class="border-y border-border py-3 text-sm text-foreground/[0.55]">
           <template v-if="userWines.length">No wines match “{{ searchQuery }}”.</template>
           <template v-else>The cellar is empty — add a bottle to begin the ledger.</template>

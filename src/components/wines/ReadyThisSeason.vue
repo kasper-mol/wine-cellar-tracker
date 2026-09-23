@@ -18,17 +18,22 @@ const emit = defineEmits<{ drink: [entry: CellarEntry] }>()
 
 <template>
   <section class="mb-8">
-    <div class="mb-4 flex items-baseline gap-3">
+    <div class="mb-4 flex flex-wrap items-baseline gap-3">
       <span class="num font-heading text-[13px] tracking-[0.16em] text-primary">I.</span>
       <h2 class="font-heading text-[34px] font-normal">Ready this season</h2>
-      <span v-if="summary" class="ml-auto text-xs text-foreground/50">{{ summary }}</span>
+      <span v-if="summary" class="ml-auto text-xs text-foreground/50 max-sm:ml-0 max-sm:w-full">
+        {{ summary }}
+      </span>
     </div>
 
-    <div v-if="entries.length" class="grid grid-cols-4 border-t border-border max-lg:grid-cols-2">
+    <div
+      v-if="entries.length"
+      class="grid grid-cols-4 border-t border-border max-lg:grid-cols-2 max-sm:grid-cols-1"
+    >
       <article
         v-for="entry in entries"
         :key="entry.wine.id"
-        class="group flex flex-col gap-2 border-r border-border px-4 py-4 last:border-r-0"
+        class="group flex flex-col gap-2 border-r border-border px-4 py-4 last:border-r-0 max-lg:[&:nth-child(2n)]:border-r-0 max-lg:[&:nth-child(n+3)]:border-t max-sm:border-r-0 max-sm:border-b max-sm:px-0 max-sm:last:border-b-0 max-sm:[&:nth-child(n+3)]:border-t-0"
       >
         <PhaseMark v-if="entry.window" :phase="entry.window.phaseNow" />
         <p class="num font-heading text-[44px] font-normal leading-[0.9] text-foreground/[0.88]">

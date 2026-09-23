@@ -18,18 +18,20 @@ withDefaults(
     <p v-if="kicker" class="num mb-3 text-[11px] uppercase tracking-[0.18em] text-accent-700">
       {{ kicker }}
     </p>
-    <div class="flex flex-wrap items-end justify-between gap-6">
+    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
       <h1
         class="mb-3 font-heading font-normal leading-[0.95] tracking-[-0.02em]"
-        :style="{ fontSize: `${titleSize}px` }"
+        :style="{ fontSize: `clamp(${Math.min(40, titleSize)}px, 11vw, ${titleSize}px)` }"
       >
         {{ title }}
       </h1>
-      <slot name="controls" />
+      <div v-if="$slots.controls" class="mb-3 max-lg:w-full max-lg:min-w-0">
+        <slot name="controls" />
+      </div>
     </div>
     <p
       v-if="lede"
-      class="text-justify text-[15px] leading-[1.7] text-foreground/[0.78]"
+      class="text-justify max-sm:text-left text-[15px] leading-[1.7] text-foreground/[0.78]"
       :style="{ maxWidth: `${ledeWidth}ch` }"
     >
       {{ lede }}

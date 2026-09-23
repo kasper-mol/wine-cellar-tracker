@@ -1,18 +1,27 @@
 <script setup lang="ts">
+import { Pencil, Trash2, Wine } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
 import PlateFigure from '@/components/editorial/PlateFigure.vue'
 import PhaseMark from '@/components/wines/PhaseMark.vue'
 import { formatPrice, formatWindow, lineValue } from '@/lib/cellar'
 import type { CellarEntry } from '@/lib/cellar'
+import type { UserWine } from '@/types/wines'
 
 defineProps<{ entries: CellarEntry[] }>()
+
+const emit = defineEmits<{
+  drink: [wine: UserWine]
+  edit: [wine: UserWine]
+  delete: [wine: UserWine]
+}>()
 </script>
 
 <template>
-  <div class="grid grid-cols-4 gap-4 max-lg:grid-cols-2">
+  <div class="grid grid-cols-4 gap-4 max-lg:grid-cols-2 max-sm:gap-3">
     <article
       v-for="entry in entries"
       :key="entry.wine.id"
-      class="group flex flex-col gap-3 rounded-md border border-border p-3"
+      class="group flex flex-col gap-3 rounded-md border border-border p-3 max-sm:gap-2 max-sm:p-2.5"
       :class="entry.wine.quantity === 0 && 'opacity-45'"
     >
       <!-- No image column exists on user wines yet; the plate is typographic. -->
@@ -61,6 +70,32 @@ defineProps<{ entries: CellarEntry[] }>()
         <span>{{ formatWindow(entry.window) }}</span>
         <span>{{ formatPrice(lineValue(entry.wine)) }}</span>
       </p>
+
+      <div class="-mx-1 -mb-1 flex justify-end gap-0.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Open a bottle"
+          :disabled="entry.wine.quantity === 0"
+          @click="emit('drink', entry.wine)"
+        >
+          <Wine class="h-[15px] w-[15px]" :stroke-width="1.5" />
+          <span class="sr-only">Open a bottle of {{ entry.wine.name }}</span>
+        </Button>
+        <Button variant="ghost" size="icon" title="Edit" @click="emit('edit', entry.wine)">
+          <Pencil class="h-[15px] w-[15px]" :stroke-width="1.5" />
+          <span class="sr-only">Edit {{ entry.wine.name }}</span>
+        </Button>
+        <Button
+          variant="destructive"
+          size="icon"
+          title="Remove"
+          @click="emit('delete', entry.wine)"
+        >
+          <Trash2 class="h-[15px] w-[15px]" :stroke-width="1.5" />
+          <span class="sr-only">Remove {{ entry.wine.name }}</span>
+        </Button>
+      </div>
     </article>
   </div>
 </template>

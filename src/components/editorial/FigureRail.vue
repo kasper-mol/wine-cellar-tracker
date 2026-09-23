@@ -17,11 +17,14 @@ withDefaults(
 </script>
 
 <template>
-  <div v-if="orientation === 'horizontal'" class="flex flex-wrap gap-6 border-y border-border py-3">
+  <div
+    v-if="orientation === 'horizontal'"
+    class="flex flex-wrap gap-6 border-y border-border py-3 max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-4 max-sm:gap-y-3"
+  >
     <div
       v-for="figure in figures"
       :key="figure.label"
-      class="border-r border-border pr-6 last:border-r-0"
+      class="border-r border-border pr-6 last:border-r-0 max-sm:[&:nth-child(2n)]:border-r-0"
     >
       <p class="num font-heading text-[30px] leading-none">{{ figure.value }}</p>
       <p class="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-foreground/[0.52]">

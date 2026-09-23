@@ -43,7 +43,7 @@ const twoColumn = computed(() => (props.description?.length ?? 0) > 240)
         Appellation profile &nbsp;·&nbsp; {{ regionName }}, {{ countryName }}
       </p>
       <h1
-        class="font-heading text-[76px] font-normal leading-[0.95]"
+        class="font-heading text-[clamp(44px,12vw,76px)] font-normal leading-[0.95]"
         :class="pronunciation || hasMeta ? 'mb-2' : 'mb-4'"
       >
         {{ name }}
@@ -63,8 +63,8 @@ const twoColumn = computed(() => (props.description?.length ?? 0) > 240)
 
       <p
         v-if="description"
-        class="mb-4 hyphens-auto text-justify text-sm leading-[1.75] text-foreground/80"
-        :class="twoColumn ? 'columns-2 gap-6' : 'max-w-[60ch]'"
+        class="mb-4 hyphens-auto text-justify max-sm:text-left text-sm leading-[1.75] text-foreground/80"
+        :class="twoColumn ? 'columns-2 gap-6 max-md:columns-1' : 'max-w-[60ch]'"
       >
         {{ description }}
       </p>
@@ -72,7 +72,7 @@ const twoColumn = computed(() => (props.description?.length ?? 0) > 240)
     </div>
 
     <PlateFigure
-      class="max-lg:order-first"
+      class="max-lg:order-first max-md:order-none max-lg:w-full"
       :src="imageUrl"
       :alt="`Map of ${name}`"
       aspect="1 / 1"

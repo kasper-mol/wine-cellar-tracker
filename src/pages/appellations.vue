@@ -132,18 +132,20 @@ onMounted(async () => {
       :lede-width="62"
     >
       <template #controls>
-        <div class="flex flex-wrap items-end gap-2">
+        <div
+          class="flex flex-wrap items-end gap-2 max-md:flex-col max-md:flex-nowrap max-md:items-stretch"
+        >
           <div>
             <p class="mb-1.5 text-xs text-foreground/70">Search</p>
             <Input
               v-model="searchQuery"
               type="search"
               placeholder="Appellation, region, country or note…"
-              class="w-[280px]"
+              class="w-[280px] max-md:w-full"
               aria-label="Search appellations"
             />
           </div>
-          <div>
+          <div class="min-w-0">
             <p class="mb-1.5 text-xs text-foreground/70">Country</p>
             <Seg v-model="selectedCountryId" name="appellation-country">
               <SegOption value="all">All</SegOption>
@@ -155,7 +157,7 @@ onMounted(async () => {
           <div>
             <p class="mb-1.5 text-xs text-foreground/70">Region</p>
             <Select v-model="selectedRegionId">
-              <SelectTrigger class="w-[200px]">
+              <SelectTrigger class="w-[200px] max-md:w-full">
                 <SelectValue placeholder="All regions" />
               </SelectTrigger>
               <SelectContent>
@@ -181,7 +183,9 @@ onMounted(async () => {
           heldAppellationIds.has(appellation.id) ? 'border-l-primary' : 'border-l-transparent'
         "
       >
-        <span class="grid grid-cols-[1fr_128px_58px] items-baseline gap-3">
+        <span
+          class="grid grid-cols-[1fr_128px_58px] items-baseline gap-3 max-sm:flex max-sm:flex-col max-sm:gap-0.5"
+        >
           <span
             class="font-heading text-[18px] leading-[1.2] transition-colors group-hover:text-accent-700"
           >

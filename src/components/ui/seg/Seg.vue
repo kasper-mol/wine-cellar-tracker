@@ -32,7 +32,10 @@ provide(SEG_CONTEXT, {
     v-bind="$attrs"
     role="radiogroup"
     :class="
-      cn('inline-flex overflow-hidden rounded-md border border-border', $attrs.class as string)
+      cn(
+        'inline-flex max-w-full overflow-x-auto rounded-md border border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        $attrs.class as string,
+      )
     "
   >
     <slot />

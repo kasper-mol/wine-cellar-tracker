@@ -60,16 +60,18 @@ const figures = computed(() => [
 </script>
 
 <template>
-  <section class="grid grid-cols-[1fr_300px] items-end gap-8 pb-6 max-lg:grid-cols-1">
+  <section class="grid grid-cols-[1fr_300px] items-end gap-8 pb-6 max-lg:grid-cols-1 max-lg:gap-6">
     <div>
       <p class="num mb-3 text-[11px] uppercase tracking-[0.18em] text-accent-700">
         Private cellar &nbsp;·&nbsp; Fascicle No. {{ labels }}
       </p>
-      <h1 class="mb-3 font-heading text-[76px] font-normal leading-[0.95] tracking-[-0.02em]">
+      <h1
+        class="mb-3 font-heading text-[clamp(48px,13vw,76px)] font-normal leading-[0.95] tracking-[-0.02em]"
+      >
         The Cellar
       </h1>
       <p
-        class="max-w-[52ch] hyphens-auto text-justify text-[15px] leading-[1.7] text-foreground/[0.78]"
+        class="max-w-[52ch] hyphens-auto text-justify max-sm:text-left text-[15px] leading-[1.7] text-foreground/[0.78]"
       >
         {{ lede }}
       </p>

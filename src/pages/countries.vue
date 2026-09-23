@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import EditorialHeader from '@/components/editorial/EditorialHeader.vue'
 import FigureRail from '@/components/editorial/FigureRail.vue'
@@ -23,6 +24,9 @@ const { countries } = storeToRefs(wineCountriesStore)
 const { regions } = storeToRefs(wineRegionsStore)
 const { appellations } = storeToRefs(wineAppellationsStore)
 const { holdingForCountry } = useCellarHoldings()
+
+/** The figure rail stands beside the entry on wide screens; below it, it reads as a row. */
+const isDesktop = useMediaQuery('(min-width: 1024px)')
 
 const entries = computed(() =>
   countries.value.map((country) => {
@@ -50,7 +54,8 @@ const lede = computed(() => {
   const tail =
     'regions, their protected designations, and the grapes permitted within each. Every bottle ' +
     'in the cellar is traced back to an entry here.'
-  if (!countries.value.length) return `The producing countries are catalogued in full: their ${tail}`
+  if (!countries.value.length)
+    return `The producing countries are catalogued in full: their ${tail}`
   return (
     `${numberToWordsCapitalized(countries.value.length)} producing ` +
     `${countries.value.length === 1 ? 'country is' : 'countries are'} catalogued in full: their ` +
@@ -81,7 +86,7 @@ onMounted(async () => {
       v-for="country in entries"
       :key="country.id"
       :to="{ name: 'country-detail', params: { id: country.id } }"
-      class="group grid grid-cols-[340px_1fr_200px] gap-6 border-b border-border py-6 max-lg:grid-cols-1"
+      class="group grid grid-cols-[340px_1fr_200px] gap-6 border-b border-border py-6 max-lg:grid-cols-1 max-lg:gap-4"
     >
       <PlateFigure
         :src="country.image_url"
@@ -95,18 +100,18 @@ onMounted(async () => {
           <template v-if="country.content"> — {{ country.content.officialName }}</template>
         </p>
         <h2
-          class="mb-3 font-heading text-[46px] font-normal leading-none transition-colors group-hover:text-accent-700"
+          class="mb-3 font-heading text-[46px] font-normal leading-none transition-colors group-hover:text-accent-700 max-sm:text-[38px]"
         >
           {{ country.name }}
         </h2>
         <p
           v-if="country.content"
-          class="max-w-[48ch] text-justify text-sm leading-[1.7] text-foreground/75"
+          class="max-w-[48ch] text-justify max-sm:text-left text-sm leading-[1.7] text-foreground/75"
         >
           {{ country.content.blurb }}
         </p>
       </div>
-      <FigureRail :figures="country.figures" orientation="stacked" />
+      <FigureRail :figures="country.figures" :orientation="isDesktop ? 'stacked' : 'horizontal'" />
     </RouterLink>
 
     <p v-if="!entries.length" class="border-b border-border py-3 text-sm text-foreground/[0.55]">

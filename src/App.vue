@@ -45,7 +45,7 @@ onMounted(() => {
 <template>
   <div class="flex min-h-screen flex-col bg-background text-foreground">
     <header class="border-b border-border">
-      <div class="mx-auto flex max-w-[1180px] items-baseline gap-8 px-6 py-4">
+      <div class="mx-auto flex max-w-[1180px] items-baseline gap-8 px-4 py-3 sm:px-6 sm:py-4">
         <RouterLink
           class="mr-auto font-heading text-[23px] tracking-[0.02em] text-foreground"
           to="/"
@@ -56,7 +56,9 @@ onMounted(() => {
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-[1180px] flex-1 px-6 pb-[120px] pt-8">
+    <main
+      class="mx-auto w-full min-w-0 max-w-[1180px] flex-1 px-4 pb-16 pt-6 sm:px-6 sm:pb-[120px] sm:pt-8"
+    >
       <div
         v-if="supabaseWarning"
         class="mb-6 border-l-2 border-destructive py-2 pl-3 text-[13px] text-destructive"
@@ -69,10 +71,10 @@ onMounted(() => {
 
     <footer class="border-t-[3px] border-double border-border">
       <div
-        class="mx-auto flex max-w-[1180px] justify-between gap-4 px-6 py-4 text-[11px] uppercase tracking-[0.1em] text-foreground/45"
+        class="mx-auto flex max-w-[1180px] flex-wrap justify-between gap-x-4 gap-y-1 px-4 py-4 text-[11px] uppercase tracking-[0.1em] text-foreground/45 sm:px-6"
       >
         <span>Cellar Tracker</span>
-        <span>{{ colophon }}</span>
+        <span class="order-last w-full sm:order-none sm:w-auto sm:text-center">{{ colophon }}</span>
         <span class="num">{{ romanYear }}</span>
       </div>
     </footer>

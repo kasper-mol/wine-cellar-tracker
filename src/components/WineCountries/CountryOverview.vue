@@ -34,17 +34,19 @@ const figures = computed(() => [
       <p class="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent-700">
         Country profile <template v-if="country.code">&nbsp;·&nbsp; {{ country.code }}</template>
       </p>
-      <h1 class="mb-4 font-heading text-[72px] font-normal leading-[0.95]">{{ country.name }}</h1>
+      <h1 class="mb-4 font-heading text-[clamp(44px,12vw,72px)] font-normal leading-[0.95]">
+        {{ country.name }}
+      </h1>
       <p
         v-if="content"
-        class="mb-4 columns-2 gap-6 hyphens-auto text-justify text-sm leading-[1.75] text-foreground/80"
+        class="mb-4 columns-2 gap-6 hyphens-auto max-md:columns-1 text-justify max-sm:text-left text-sm leading-[1.75] text-foreground/80"
       >
         {{ content.blurb }}
       </p>
       <FigureRail :figures="figures" orientation="horizontal" />
     </div>
 
-    <figure v-if="mapKey" class="max-lg:order-first">
+    <figure v-if="mapKey" class="min-w-0 max-lg:order-first max-md:order-none max-lg:w-full">
       <WineMapDisplay :map-key="mapKey" />
       <figcaption class="mt-1 text-[11px] text-foreground/[0.55]">
         Regions are clickable; each shape links to its encyclopedia entry.
@@ -52,7 +54,7 @@ const figures = computed(() => [
     </figure>
     <PlateFigure
       v-else
-      class="max-lg:order-first"
+      class="max-lg:order-first max-md:order-none"
       :src="country.image_url"
       :alt="`Map of ${country.name}`"
       aspect="3 / 4"

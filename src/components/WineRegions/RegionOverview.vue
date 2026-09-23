@@ -28,10 +28,12 @@ const blurb = computed(() => regionBlurb(props.region.name))
       <p class="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent-700">
         Region overview &nbsp;·&nbsp; {{ countryName }}
       </p>
-      <h1 class="mb-4 font-heading text-[72px] font-normal leading-[0.95]">{{ region.name }}</h1>
+      <h1 class="mb-4 font-heading text-[clamp(44px,12vw,72px)] font-normal leading-[0.95]">
+        {{ region.name }}
+      </h1>
       <p
         v-if="blurb"
-        class="mb-4 max-w-[60ch] hyphens-auto text-justify text-sm leading-[1.75] text-foreground/80"
+        class="mb-4 max-w-[60ch] hyphens-auto text-justify max-sm:text-left text-sm leading-[1.75] text-foreground/80"
       >
         {{ blurb }}
       </p>
@@ -42,7 +44,7 @@ const blurb = computed(() => regionBlurb(props.region.name))
     </div>
 
     <PlateFigure
-      class="max-lg:order-first"
+      class="max-lg:order-first max-md:order-none max-lg:w-full"
       :src="region.image_url"
       :alt="`Map of ${region.name}`"
       aspect="4 / 3"

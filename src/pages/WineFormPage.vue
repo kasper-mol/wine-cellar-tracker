@@ -430,7 +430,7 @@ async function handleSubmit(addAnother = false) {
 
         <FeedbackBanner :feedback="feedback" />
 
-        <div class="flex gap-2 border-t border-border pt-4">
+        <div class="flex flex-wrap gap-2 border-t border-border pt-4">
           <Button type="submit" :disabled="isSaving">
             {{ isSaving ? 'Saving…' : isEditing ? 'Save changes' : 'Add to cellar' }}
           </Button>
@@ -448,7 +448,9 @@ async function handleSubmit(addAnother = false) {
         </div>
       </div>
 
-      <aside class="border-l border-border pl-4">
+      <aside
+        class="border-l border-border pl-4 max-lg:border-l-0 max-lg:border-t max-lg:pl-0 max-lg:pt-4"
+      >
         <p class="mb-3 text-[11px] uppercase tracking-[0.14em] text-foreground/[0.55]">
           Computed window
         </p>
@@ -465,7 +467,7 @@ async function handleSubmit(addAnother = false) {
           </div>
           <p
             v-if="computedWindow.notes.length"
-            class="text-justify text-[13px] leading-[1.7] text-foreground/[0.72]"
+            class="text-justify max-sm:text-left text-[13px] leading-[1.7] text-foreground/[0.72]"
           >
             {{ computedWindow.notes.join(' ') }}
           </p>

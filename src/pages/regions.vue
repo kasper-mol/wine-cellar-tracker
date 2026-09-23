@@ -90,18 +90,20 @@ onMounted(async () => {
       :title-size="64"
     >
       <template #controls>
-        <div class="flex items-end gap-2">
+        <div
+          class="flex flex-wrap items-end gap-2 max-md:flex-col max-md:flex-nowrap max-md:items-stretch"
+        >
           <div>
             <p class="mb-1.5 text-xs text-foreground/70">Search</p>
             <Input
               v-model="searchQuery"
               type="search"
               placeholder="Region name…"
-              class="w-[230px]"
+              class="w-[230px] max-md:w-full"
               aria-label="Search regions"
             />
           </div>
-          <div>
+          <div class="min-w-0">
             <p class="mb-1.5 text-xs text-foreground/70">Country</p>
             <Seg v-model="selectedCountryId" name="region-country">
               <SegOption value="all">All</SegOption>
@@ -115,7 +117,10 @@ onMounted(async () => {
     </EditorialHeader>
     <div class="rule-dbl mb-6 mt-6" />
 
-    <div v-if="filteredRegions.length" class="grid grid-cols-3 gap-6 max-lg:grid-cols-2">
+    <div
+      v-if="filteredRegions.length"
+      class="grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1 max-sm:gap-8"
+    >
       <RouterLink
         v-for="region in filteredRegions"
         :key="region.id"
@@ -138,7 +143,7 @@ onMounted(async () => {
         </h2>
         <p
           v-if="region.blurb"
-          class="text-justify text-[13px] leading-[1.65] text-foreground/[0.72]"
+          class="text-justify max-sm:text-left text-[13px] leading-[1.65] text-foreground/[0.72]"
         >
           {{ region.blurb }}
         </p>

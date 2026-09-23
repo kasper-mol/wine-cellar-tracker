@@ -20,7 +20,7 @@ const emit = defineEmits<{ (e: 'select-appellation', id: string): void }>()
         :key="appellation.id"
         href="#"
         :title="appellation.shortDescription || undefined"
-        class="inline-flex items-center rounded-sm border border-primary px-2.5 py-[3px] text-[11px] tracking-[0.02em] text-primary transition-colors hover:bg-primary/[0.12]"
+        class="inline-flex items-center rounded-sm border border-primary px-2.5 py-[3px] text-[11px] tracking-[0.02em] text-primary transition-colors hover:bg-primary/[0.12] max-sm:px-3 max-sm:py-1.5 max-sm:text-[13px]"
         @click.prevent="emit('select-appellation', appellation.id)"
       >
         {{ appellation.name }}

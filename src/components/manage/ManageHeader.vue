@@ -14,7 +14,9 @@ withDefaults(
     <div class="flex flex-wrap items-end justify-between gap-6">
       <div>
         <p class="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent-700">{{ kicker }}</p>
-        <h1 class="font-heading text-[52px] font-normal leading-none">{{ title }}</h1>
+        <h1 class="font-heading text-[clamp(38px,10vw,52px)] font-normal leading-none">
+          {{ title }}
+        </h1>
       </div>
       <slot name="actions" />
     </div>

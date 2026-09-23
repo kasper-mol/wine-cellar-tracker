@@ -20,7 +20,9 @@ const profile = computed(() => buildFlavorProfile(props.rows, clustersWithDescri
 
 <template>
   <section v-if="loading || profile.length" class="mt-8">
-    <div class="mb-3 flex items-baseline justify-between border-b border-border pb-2">
+    <div
+      class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border pb-2"
+    >
       <h2 class="font-heading text-[30px] font-normal">Typical aromas &amp; flavours</h2>
       <RouterLink to="/flavors" class="text-[11px] uppercase tracking-[0.12em] text-accent-700">
         WSET lexicon

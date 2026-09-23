@@ -177,7 +177,7 @@ function getScoreColor(score: number | null | undefined): string {
   <section v-if="hasData">
     <div class="mb-3 flex flex-wrap items-baseline justify-between gap-4">
       <h2 class="font-heading text-[30px] font-normal">{{ titleText }}</h2>
-      <div class="flex items-center gap-3">
+      <div class="flex min-w-0 max-w-full items-center gap-3">
         <Badge v-if="usingFallback" data-testid="vintage-fallback-badge">Region data</Badge>
         <Seg v-if="effectiveData.length > 1" v-model="selectedSourceId" name="vintage-source">
           <SegOption v-for="option in effectiveData" :key="option.id" :value="option.id">
@@ -187,7 +187,7 @@ function getScoreColor(score: number | null | undefined): string {
       </div>
     </div>
 
-    <Table>
+    <Table class="min-w-[640px]">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
           <TableHead class="w-[74px] text-right">Vintage</TableHead>
