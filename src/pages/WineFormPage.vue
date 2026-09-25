@@ -22,10 +22,12 @@ import PhaseMark from '@/components/wines/PhaseMark.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
 import { useMainStore } from '@/stores/main'
+import { useScanDraftStore } from '@/stores/scanDraft'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineGrapeVarietiesStore } from '@/stores/wineGrapeVarieties'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import type { DrinkingWindow } from '@/types/drinkingWindow'
+import type { ScanResult } from '@/types/labelScan'
 import type { GrapeRef, UserWine, WineCreatePayload, WineStyle } from '@/types/wines'
 
 defineOptions({
@@ -47,6 +49,7 @@ const wineRegionsStore = useWineRegionsStore()
 const wineAppellationsStore = useWineAppellationsStore()
 const grapeVarietiesStore = useWineGrapeVarietiesStore()
 const drinkingWindowStore = useDrinkingWindowStore()
+const scanDraftStore = useScanDraftStore()
 const { feedback, setError, clearFeedback } = useFeedback()
 
 const { userWines } = storeToRefs(mainStore)
@@ -76,9 +79,103 @@ const blank = () => ({
   varietal: '',
   archetypeId: null as string | null,
   vivinoLink: '',
+  producerLink: '',
 })
 
 const form = reactive(blank())
+
+/** Which form fields were seeded from a label scan (vs. typed by the user) —
+ *  drives the small "from scan" marker so low-confidence guesses stand out. */
+const scannedFields = ref<Set<string>>(new Set())
+
+/** Case/accent-insensitive compare — the LLM's appellation/grape spelling
+ *  won't always match our reference tables exactly (e.g. "Cotes du Rhone"
+ *  vs "Côtes du Rhône"). */
+function normalize(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+/** Classification boilerplate the LLM sometimes spells out in full
+ *  ("Denominazione di Origine Controllata e Garantita") where our reference
+ *  table stores the abbreviation ("DOCG") — strip both forms so "Barolo
+ *  DOCG" and "Barolo Denominazione di Origine Controllata e Garantita"
+ *  compare equal on their actual appellation name. */
+const CLASSIFICATION_NOISE =
+  /\b(denominazione di origine controllata e garantita|denominazione di origine controllata|appellation d.origine contr[oô]l[eé]e|appellation d.origine prot[eé]g[eé]e|docg|doca|doc|aoc|aop|igt|ava)\b/gi
+
+function coreName(text: string): string {
+  return normalize(text).replace(CLASSIFICATION_NOISE, '').replace(/\s+/g, ' ').trim()
+}
+
+function matchAppellation(text: string) {
+  const target = coreName(text)
+  return (
+    appellations.value.find((a) => coreName(a.name) === target) ??
+    appellations.value.find((a) => {
+      const name = coreName(a.name)
+      return name.includes(target) || target.includes(name)
+    })
+  )
+}
+
+function matchGrape(text: string) {
+  const target = normalize(text)
+  return grapeVarieties.value.find((g) => normalize(g.name) === target)
+}
+
+function fillFromScan(scan: ScanResult) {
+  const filled = new Set<string>()
+  if (scan.producer) {
+    form.producer = scan.producer
+    filled.add('producer')
+  }
+  if (scan.name) {
+    form.name = scan.name
+    filled.add('name')
+  }
+  if (scan.vintage) {
+    form.vintage = String(scan.vintage)
+    filled.add('vintage')
+  }
+  if (scan.styleGuess) {
+    form.style = scan.styleGuess
+    filled.add('style')
+  }
+  if (scan.producerLink) {
+    form.producerLink = scan.producerLink
+    filled.add('producerLink')
+  }
+  if (scan.appellationText) {
+    const matched = matchAppellation(scan.appellationText)
+    if (matched) {
+      form.regionId = matched.region_id
+      form.appellationId = matched.id
+      filled.add('appellationId')
+    }
+  }
+  if (scan.grapesText.length) {
+    const matchedIds: string[] = []
+    const unmatched: string[] = []
+    for (const name of scan.grapesText) {
+      const grape = matchGrape(name)
+      if (grape) matchedIds.push(grape.id)
+      else unmatched.push(name)
+    }
+    if (matchedIds.length) {
+      form.grapeIds = [...new Set(matchedIds)]
+      filled.add('grapeIds')
+    }
+    if (unmatched.length) {
+      form.varietal = unmatched.join(', ')
+      filled.add('varietal')
+    }
+  }
+  scannedFields.value = filled
+}
 
 const appellationsForRegion = computed(() =>
   form.regionId ? appellations.value.filter((a) => a.region_id === form.regionId) : [],
@@ -135,6 +232,7 @@ function fillFrom(wine: UserWine) {
   form.varietal = wine.varietal
   form.archetypeId = wine.archetypeId
   form.vivinoLink = wine.vivinoLink
+  form.producerLink = wine.producerLink
 }
 
 onMounted(async () => {
@@ -149,6 +247,9 @@ onMounted(async () => {
   if (editingId.value) {
     const wine = userWines.value.find((w) => w.id === editingId.value)
     if (wine) fillFrom(wine)
+  } else {
+    const scan = scanDraftStore.takeDraft()
+    if (scan) fillFromScan(scan)
   }
   recomputeWindow()
 })
@@ -177,6 +278,7 @@ function draftWine(): UserWine {
     criticWindowEnd: num(form.criticEnd),
     purchasePrice: Number(form.purchasePrice) || 0,
     vivinoLink: form.vivinoLink,
+    producerLink: form.producerLink,
     regionId: form.regionId || null,
     regionName: region?.name ?? '',
     appellationId: form.appellationId || null,
@@ -227,6 +329,7 @@ function buildPayload(name: string): WineCreatePayload {
     critic_window_end: num(form.criticEnd),
     purchase_price: num(form.purchasePrice),
     vivino_link: form.vivinoLink.trim() || null,
+    producer_link: form.producerLink.trim() || null,
     region: form.regionId || null,
     appellation: form.appellationId || null,
     archetype_id: form.archetypeId,
@@ -284,19 +387,31 @@ async function handleSubmit(addAnother = false) {
           </legend>
           <div class="grid grid-cols-2 gap-x-4 gap-y-3 max-sm:grid-cols-1">
             <div>
-              <Label class="mb-1.5 block text-xs text-foreground/70">Wine name</Label>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Wine name
+                <span v-if="scannedFields.has('name')" class="text-accent-700">· from scan, check it</span>
+              </Label>
               <Input v-model="form.name" placeholder="e.g. Barolo Cerequio" />
             </div>
             <div>
-              <Label class="mb-1.5 block text-xs text-foreground/70">Producer</Label>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Producer
+                <span v-if="scannedFields.has('producer')" class="text-accent-700">· from scan, check it</span>
+              </Label>
               <Input v-model="form.producer" placeholder="e.g. Roberto Voerzio" />
             </div>
             <div>
-              <Label class="mb-1.5 block text-xs text-foreground/70">Vintage</Label>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Vintage
+                <span v-if="scannedFields.has('vintage')" class="text-accent-700">· from scan, check it</span>
+              </Label>
               <Input v-model="form.vintage" type="number" placeholder="e.g. 2016 — blank for NV" />
             </div>
             <div>
-              <Label class="mb-1.5 block text-xs text-foreground/70">Grape(s)</Label>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Grape(s)
+                <span v-if="scannedFields.has('grapeIds')" class="text-accent-700">· from scan, check it</span>
+              </Label>
               <GrapeMultiSelect
                 v-model="form.grapeIds"
                 :options="grapeVarieties"
@@ -307,7 +422,10 @@ async function handleSubmit(addAnother = false) {
               </p>
             </div>
             <div>
-              <Label class="mb-1.5 block text-xs text-foreground/70">Other grape(s)</Label>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Other grape(s)
+                <span v-if="scannedFields.has('varietal')" class="text-accent-700">· from scan, check it</span>
+              </Label>
               <Input v-model="form.varietal" placeholder="e.g. Rossese — comma separated" />
               <p class="mt-1.5 text-[11px] leading-[1.5] text-foreground/[0.52]">
                 Free text, for grapes not in the library.
@@ -338,7 +456,10 @@ async function handleSubmit(addAnother = false) {
               </Select>
             </div>
             <div>
-              <Label class="mb-1.5 block text-xs text-foreground/70">Appellation</Label>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Appellation
+                <span v-if="scannedFields.has('appellationId')" class="text-accent-700">· from scan, check it</span>
+              </Label>
               <Select v-model="appellationSelection" :disabled="!form.regionId">
                 <SelectTrigger>
                   <SelectValue placeholder="— none —" />
@@ -412,6 +533,13 @@ async function handleSubmit(addAnother = false) {
               <Label class="mb-1.5 block text-xs text-foreground/70">Vivino link</Label>
               <Input v-model="form.vivinoLink" placeholder="https://www.vivino.com/…" />
             </div>
+            <div>
+              <Label class="mb-1.5 block text-xs text-foreground/70">
+                Producer link
+                <span v-if="scannedFields.has('producerLink')" class="text-accent-700">· from scan, check it</span>
+              </Label>
+              <Input v-model="form.producerLink" placeholder="https://…" />
+            </div>
           </div>
         </fieldset>
 
@@ -420,6 +548,7 @@ async function handleSubmit(addAnother = false) {
             class="mb-3 w-full border-b border-border pb-1.5 font-heading text-[13px] uppercase tracking-[0.14em] text-accent-700"
           >
             Style
+            <span v-if="scannedFields.has('style')" class="text-accent-700">· from scan, check it</span>
           </legend>
           <Seg v-model="form.style" name="wine-style">
             <SegOption v-for="style in STYLES" :key="style.value" :value="style.value">

@@ -51,6 +51,8 @@ export interface WineRecord {
   purchase_price: number | null
   purchase_date: string | null
   vivino_link: string | null
+  /** Producer/wine page link, found by the label-scan LLM — not verified */
+  producer_link: string | null
   /** Tier-1 wine-specific critic drink window (overrides the engine when set) */
   critic_window_start: number | null
   critic_window_end: number | null
@@ -93,6 +95,7 @@ export interface UserWine {
   criticWindowEnd: number | null
   purchasePrice: number
   vivinoLink: string
+  producerLink: string
   regionId: string | null
   regionName: string
   appellationId: string | null
@@ -119,6 +122,7 @@ export interface WineCreatePayload {
   purchase_price?: number | null
   purchase_date?: string | null
   vivino_link?: string | null
+  producer_link?: string | null
   critic_window_start?: number | null
   critic_window_end?: number | null
   region?: string | null
@@ -155,6 +159,7 @@ export function wineRecordToUserWine(r: WineRecord): UserWine {
     criticWindowEnd: r.critic_window_end ?? null,
     purchasePrice: r.purchase_price ?? 0,
     vivinoLink: r.vivino_link ?? '',
+    producerLink: r.producer_link ?? '',
     regionId: r.region_info?.id ?? null,
     regionName: r.region_info?.name ?? '',
     appellationId: r.appellation_info?.id ?? null,

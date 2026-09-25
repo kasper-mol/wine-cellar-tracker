@@ -3,7 +3,16 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useLocalStorage, useMediaQuery } from '@vueuse/core'
-import { ArrowDown, ArrowUp, ChevronsUpDown, Pencil, Plus, Trash2, Wine } from 'lucide-vue-next'
+import {
+  ArrowDown,
+  ArrowUp,
+  Camera,
+  ChevronsUpDown,
+  Pencil,
+  Plus,
+  Trash2,
+  Wine,
+} from 'lucide-vue-next'
 import {
   Table,
   TableBody,
@@ -217,6 +226,10 @@ function openCreate() {
   router.push({ name: 'wine-create' })
 }
 
+function openScan() {
+  router.push({ name: 'wine-scan' })
+}
+
 function openEdit(wine: UserWine) {
   router.push({ name: 'wine-edit', params: { id: wine.id } })
 }
@@ -278,7 +291,11 @@ async function handleDelete(wine: UserWine) {
             <SegOption value="table">Table</SegOption>
             <SegOption value="plates">Plates</SegOption>
           </Seg>
-          <Button class="max-sm:ml-auto" @click="openCreate">
+          <Button variant="secondary" class="max-sm:ml-auto" @click="openScan">
+            <Camera class="h-3.5 w-3.5" :stroke-width="1.5" />
+            Scan wine
+          </Button>
+          <Button @click="openCreate">
             <Plus class="h-3.5 w-3.5" :stroke-width="1.5" />
             Add wine
           </Button>
