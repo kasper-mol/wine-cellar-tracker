@@ -5,6 +5,7 @@ import DashboardPage from '@/pages/DashboardPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
 import WineFormPage from '@/pages/WineFormPage.vue'
 import ScanWinePage from '@/pages/ScanWinePage.vue'
+import UsersManagePage from '@/pages/manage/UsersManagePage.vue'
 import CountriesPage from '@/pages/countries.vue'
 import RegionsPage from '@/pages/regions.vue'
 import AppellationsPage from '@/pages/appellations.vue'
@@ -102,6 +103,11 @@ const router = createRouter({
       component: AppellationDetailPage,
       props: true,
       meta: { public: true },
+    },
+    {
+      path: '/manage/users',
+      name: 'manage-users',
+      component: UsersManagePage,
     },
     {
       path: '/manage/wine-countries',

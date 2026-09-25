@@ -52,6 +52,15 @@ Deno.serve(async (req) => {
     } = await supabase.auth.getUser()
     if (!user) return json({ error: 'Not authenticated' }, 401)
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('can_scan_labels')
+      .eq('id', user.id)
+      .single()
+    if (!profile?.can_scan_labels) {
+      return json({ error: 'Label scanning is not enabled for your account — ask an admin.' }, 403)
+    }
+
     const today = new Date().toISOString().slice(0, 10)
     const { data: usageRow } = await supabase
       .from('scan_usage')

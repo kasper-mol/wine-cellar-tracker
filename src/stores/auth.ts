@@ -7,6 +7,7 @@ import { useMainStore } from '@/stores/main'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const isAdmin = ref(false)
+  const canScanLabels = ref(false)
   const isLoading = ref(true)
 
   const isLoggedIn = computed(() => user.value !== null)
@@ -20,8 +21,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchProfile(userId: string) {
     const db = getSupabaseClient()
-    const { data } = await db.from('profiles').select('is_admin').eq('id', userId).single()
+    const { data } = await db
+      .from('profiles')
+      .select('is_admin, can_scan_labels')
+      .eq('id', userId)
+      .single()
     isAdmin.value = data?.is_admin ?? false
+    canScanLabels.value = data?.can_scan_labels ?? false
   }
 
   function init() {
@@ -47,6 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
         mainStore.loadWines()
       } else if (!user.value && wasLoggedIn) {
         isAdmin.value = false
+        canScanLabels.value = false
         mainStore.clearWines()
       }
     })
@@ -69,7 +76,18 @@ export const useAuthStore = defineStore('auth', () => {
     if (error) throw new Error(error.message)
     user.value = null
     isAdmin.value = false
+    canScanLabels.value = false
   }
 
-  return { user, isAdmin, isLoading, isLoggedIn, displayName, init, signInWithGoogle, signOut }
+  return {
+    user,
+    isAdmin,
+    canScanLabels,
+    isLoading,
+    isLoggedIn,
+    displayName,
+    init,
+    signInWithGoogle,
+    signOut,
+  }
 })

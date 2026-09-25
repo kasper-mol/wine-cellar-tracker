@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const tabs = [
+  { label: 'Users', to: '/manage/users' },
   { label: 'Countries', to: '/manage/wine-countries' },
   { label: 'Regions', to: '/manage/wine-regions' },
   { label: 'Appellations', to: '/manage/wine-appellations' },

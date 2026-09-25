@@ -38,6 +38,7 @@ import { formatPrice, formatWindow, lineValue } from '@/lib/cellar'
 import type { CellarEntry } from '@/lib/cellar'
 import { numberToWords, numberToWordsCapitalized } from '@/lib/numberToWords'
 import { CONFIDENCE_TITLE, READY_PHASES } from '@/lib/phase'
+import { useAuthStore } from '@/stores/auth'
 import { useDrinkingWindowStore } from '@/stores/drinkingWindow'
 import { useMainStore } from '@/stores/main'
 import { useWineAppellationsStore } from '@/stores/wineAppellations'
@@ -48,6 +49,7 @@ import type { UserWine } from '@/types/wines'
 
 const router = useRouter()
 const mainStore = useMainStore()
+const authStore = useAuthStore()
 const wineRegionsStore = useWineRegionsStore()
 const wineCountriesStore = useWineCountriesStore()
 const wineAppellationsStore = useWineAppellationsStore()
@@ -291,11 +293,16 @@ async function handleDelete(wine: UserWine) {
             <SegOption value="table">Table</SegOption>
             <SegOption value="plates">Plates</SegOption>
           </Seg>
-          <Button variant="secondary" class="max-sm:ml-auto" @click="openScan">
+          <Button
+            v-if="authStore.canScanLabels"
+            variant="secondary"
+            class="max-sm:ml-auto"
+            @click="openScan"
+          >
             <Camera class="h-3.5 w-3.5" :stroke-width="1.5" />
             Scan wine
           </Button>
-          <Button @click="openCreate">
+          <Button :class="{ 'max-sm:ml-auto': !authStore.canScanLabels }" @click="openCreate">
             <Plus class="h-3.5 w-3.5" :stroke-width="1.5" />
             Add wine
           </Button>

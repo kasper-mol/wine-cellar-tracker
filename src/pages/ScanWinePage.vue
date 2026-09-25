@@ -7,6 +7,7 @@ import EditorialHeader from '@/components/editorial/EditorialHeader.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { scanLabel } from '@/services/labelScan'
+import { useAuthStore } from '@/stores/auth'
 import { useScanDraftStore } from '@/stores/scanDraft'
 import type { ScanResult } from '@/types/labelScan'
 
@@ -15,6 +16,7 @@ defineOptions({
 })
 
 const router = useRouter()
+const authStore = useAuthStore()
 const scanDraftStore = useScanDraftStore()
 const { feedback, setError, clearFeedback } = useFeedback()
 
@@ -81,7 +83,11 @@ function useThisInfo() {
 
     <FeedbackBanner :feedback="feedback" class="my-6" />
 
-    <section class="mt-8 max-w-xl space-y-6">
+    <p v-if="!authStore.canScanLabels" class="mt-8 max-w-xl text-[15px] text-foreground/70">
+      Label scanning isn't enabled for your account yet — ask an admin to turn it on.
+    </p>
+
+    <section v-else class="mt-8 max-w-xl space-y-6">
       <input
         ref="fileInput"
         type="file"

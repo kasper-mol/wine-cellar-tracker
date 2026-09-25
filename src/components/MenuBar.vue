@@ -27,6 +27,7 @@ const links = [
 ]
 
 const manageLinks = [
+  { label: 'Users', to: '/manage/users' },
   { label: 'Wine countries', to: '/manage/wine-countries' },
   { label: 'Wine regions', to: '/manage/wine-regions' },
   { label: 'Appellations', to: '/manage/wine-appellations' },
