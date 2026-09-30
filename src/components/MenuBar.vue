@@ -24,6 +24,7 @@ const links = [
   { label: 'Regions', to: '/regions', prefixes: ['/regions', '/region/'] },
   { label: 'Appellations', to: '/appellations', prefixes: ['/appellations', '/appellation/'] },
   { label: 'Flavours', to: '/flavors', prefixes: ['/flavors'] },
+  { label: 'Pairing', to: '/pairing', prefixes: ['/pairing'] },
 ]
 
 const manageLinks = [
@@ -36,6 +37,7 @@ const manageLinks = [
   { label: 'Flavor descriptors', to: '/manage/flavor-descriptors' },
   { label: 'Wine maps', to: '/manage/wine-maps' },
   { label: 'Drinking window', to: '/manage/drinking-window' },
+  { label: 'Food pairing', to: '/manage/food-pairing' },
 ]
 
 const linkClass =

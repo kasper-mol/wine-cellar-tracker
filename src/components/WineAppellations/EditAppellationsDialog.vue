@@ -18,6 +18,7 @@ import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
 import AppellationFlavorManager from './AppellationFlavorManager.vue'
+import AppellationFoodPairingManager from './AppellationFoodPairingManager.vue'
 import AppellationCopyFields from './AppellationCopyFields.vue'
 import { copyFormFromRecord, copyFormToPayload } from '@/lib/appellationCopyForm'
 import { useFeedback } from '@/composables/useFeedback'
@@ -156,6 +157,7 @@ defineExpose({ openDialog })
           :appellation-id="appellationId ?? null"
           :wine-styles="copyForm.wine_styles"
         />
+        <AppellationFoodPairingManager :appellation-id="appellationId ?? null" />
         <FeedbackBanner :feedback="feedback" />
         <DialogFooter>
           <Button type="button" variant="outline" @click="closeDialog">Cancel</Button>

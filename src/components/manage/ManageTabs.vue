@@ -13,6 +13,7 @@ const tabs = [
   { label: 'Flavour descriptors', to: '/manage/flavor-descriptors' },
   { label: 'Wine maps', to: '/manage/wine-maps' },
   { label: 'Drinking window', to: '/manage/drinking-window' },
+  { label: 'Food pairing', to: '/manage/food-pairing' },
 ]
 
 function isActive(to: string) {

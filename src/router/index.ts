@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { authGuard } from '@/router/guards'
 
 import DashboardPage from '@/pages/DashboardPage.vue'
 import LoginPage from '@/pages/LoginPage.vue'
@@ -10,6 +11,7 @@ import CountriesPage from '@/pages/countries.vue'
 import RegionsPage from '@/pages/regions.vue'
 import AppellationsPage from '@/pages/appellations.vue'
 import FlavorsPage from '@/pages/flavors.vue'
+import PairingPage from '@/pages/PairingPage.vue'
 import CountryDetailPage from '@/pages/country/[id].vue'
 import RegionDetailPage from '@/pages/region/[id].vue'
 import AppellationDetailPage from '@/pages/appellation/[id].vue'
@@ -28,6 +30,11 @@ import DrinkingWindowMappings from '@/pages/manage/drinking-window/mappings.vue'
 import DrinkingWindowProducers from '@/pages/manage/drinking-window/producers.vue'
 import DrinkingWindowHotVintages from '@/pages/manage/drinking-window/hot-vintages.vue'
 import DrinkingWindowSettings from '@/pages/manage/drinking-window/settings.vue'
+import FoodPairingIndex from '@/pages/manage/food-pairing/index.vue'
+import FoodPairingTags from '@/pages/manage/food-pairing/tags.vue'
+import FoodPairingBaseline from '@/pages/manage/food-pairing/baseline.vue'
+import FoodPairingPresets from '@/pages/manage/food-pairing/presets.vue'
+import FoodPairingSearches from '@/pages/manage/food-pairing/searches.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -81,6 +88,12 @@ const router = createRouter({
       path: '/flavors',
       name: 'flavors',
       component: FlavorsPage,
+      meta: { public: true },
+    },
+    {
+      path: '/pairing',
+      name: 'pairing',
+      component: PairingPage,
       meta: { public: true },
     },
     {
@@ -178,6 +191,31 @@ const router = createRouter({
       component: DrinkingWindowSettings,
     },
     {
+      path: '/manage/food-pairing',
+      name: 'food-pairing',
+      component: FoodPairingIndex,
+    },
+    {
+      path: '/manage/food-pairing/tags',
+      name: 'food-pairing-tags',
+      component: FoodPairingTags,
+    },
+    {
+      path: '/manage/food-pairing/baseline',
+      name: 'food-pairing-baseline',
+      component: FoodPairingBaseline,
+    },
+    {
+      path: '/manage/food-pairing/presets',
+      name: 'food-pairing-presets',
+      component: FoodPairingPresets,
+    },
+    {
+      path: '/manage/food-pairing/searches',
+      name: 'food-pairing-searches',
+      component: FoodPairingSearches,
+    },
+    {
       path: '/manage/wine-maps/:id',
       name: 'wine-map-manage',
       component: WineMapManagePage,
@@ -186,21 +224,6 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
-  const authStore = useAuthStore()
-
-  // Wait until auth is resolved before making decisions
-  if (authStore.isLoading) return true
-
-  const isPublic = to.meta.public === true
-  if (!isPublic && !authStore.isLoggedIn) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-
-  // Already logged in and trying to visit login page
-  if (to.name === 'login' && authStore.isLoggedIn) {
-    return { name: 'dashboard' }
-  }
-})
+router.beforeEach((to) => authGuard(to, useAuthStore()))
 
 export default router

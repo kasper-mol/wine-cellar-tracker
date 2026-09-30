@@ -25,7 +25,7 @@ const facts = computed(() =>
     { label: 'Style', value: props.styleSummary },
     { label: 'Climate & soil', value: props.climateSoil },
     { label: 'Drinking window', value: props.drinkingWindow },
-    { label: 'Pairings', value: props.foodPairings?.length ? props.foodPairings.join(' · ') : null },
+    { label: 'Classic pairings', value: props.foodPairings?.length ? props.foodPairings.join(' · ') : null },
   ].filter((fact): fact is { label: string; value: string } => Boolean(fact.value)),
 )
 </script>

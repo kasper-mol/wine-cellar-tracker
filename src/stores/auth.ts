@@ -9,6 +9,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = ref(false)
   const canScanLabels = ref(false)
   const isLoading = ref(true)
+  /** True once the profile (is_admin, scan rights) has been read for the current user. */
+  const profileLoaded = ref(false)
 
   const isLoggedIn = computed(() => user.value !== null)
   const displayName = computed(
@@ -21,13 +23,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchProfile(userId: string) {
     const db = getSupabaseClient()
-    const { data } = await db
-      .from('profiles')
-      .select('is_admin, can_scan_labels')
-      .eq('id', userId)
-      .single()
-    isAdmin.value = data?.is_admin ?? false
-    canScanLabels.value = data?.can_scan_labels ?? false
+    try {
+      const { data } = await db
+        .from('profiles')
+        .select('is_admin, can_scan_labels')
+        .eq('id', userId)
+        .single()
+      isAdmin.value = data?.is_admin ?? false
+      canScanLabels.value = data?.can_scan_labels ?? false
+    } finally {
+      // Loaded even on failure: a guard waiting on the profile must never hang, and a failed
+      // read leaves isAdmin false, which is the safe answer.
+      profileLoaded.value = true
+    }
   }
 
   function init() {
@@ -54,6 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
       } else if (!user.value && wasLoggedIn) {
         isAdmin.value = false
         canScanLabels.value = false
+        profileLoaded.value = false
         mainStore.clearWines()
       }
     })
@@ -77,6 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     isAdmin.value = false
     canScanLabels.value = false
+    profileLoaded.value = false
   }
 
   return {
@@ -84,6 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     canScanLabels,
     isLoading,
+    profileLoaded,
     isLoggedIn,
     displayName,
     init,

@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Seg, SegOption } from '@/components/ui/seg'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import PairingTeaser from '@/components/foodPairings/PairingTeaser.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import CellarLedger from '@/components/wines/CellarLedger.vue'
 import DrinkBottleDialog from '@/components/wines/DrinkBottleDialog.vue'
@@ -263,6 +264,8 @@ async function handleDelete(wine: UserWine) {
 
     <CellarLedger :wines="userWines" :ready-bottles="readyBottles" />
     <div class="rule-dbl mb-8" />
+
+    <PairingTeaser />
 
     <ReadyThisSeason
       :entries="readyEntries.slice(0, 4)"
