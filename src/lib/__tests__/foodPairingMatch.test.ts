@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildEditorialIndex } from '@/lib/foodPairingEditorial'
+import { attributeDishes, buildEditorialIndex } from '@/lib/foodPairingEditorial'
 import type { EditorialIndex } from '@/lib/foodPairingEditorial'
 import {
   compareAppellationResults,
@@ -17,11 +17,21 @@ const match = (slug: string, confidence = 1): FoodTagMatch => ({
   confidence,
 })
 
+/** Classic dishes for one appellation; each dish reads as exactly one (anchor) tag. */
 const editorialFor = (
   appellationId: string,
-  mentions: [slug: string, phrase: string][],
+  dishes: [slug: string, phrase: string][],
 ): EditorialIndex =>
-  new Map([[appellationId, mentions.map(([slug, phrase]) => ({ tagId: `tag-${slug}`, phrase }))]])
+  new Map([
+    [
+      appellationId,
+      dishes.map(([slug, phrase]) => ({
+        phrase,
+        tagIds: [`tag-${slug}`],
+        anchorTagIds: [`tag-${slug}`],
+      })),
+    ],
+  ])
 
 describe('computeMatch', () => {
   it('maps a "good" rating to 6 and a "classic" one to 8 — the style-fit ceiling', () => {
@@ -264,11 +274,12 @@ describe('scoreCellarWines: match and order', () => {
 describe('buildEditorialIndex', () => {
   const tags = [
     tag('duck'),
-    tag('mushroom', ['mushroom', 'porcini']),
-    tag('hard-cheese', ['gruyere', 'aged gruyere']),
+    tag('mushroom', ['mushroom', 'porcini'], { category: 'vegetable_produce' }),
+    tag('hard-cheese', ['gruyere', 'aged gruyere'], { category: 'cheese_dairy' }),
+    tag('roasted', ['roast', 'roasted'], { category: 'preparation' }),
   ]
 
-  it("reads each appellation's classic pairings with the search matcher", () => {
+  it("reads each appellation's classic dishes with the search matcher, one entry per dish", () => {
     const index = buildEditorialIndex(
       [
         appellation('margaux', ['red'], {
@@ -279,18 +290,139 @@ describe('buildEditorialIndex', () => {
       tags,
     )
     expect(index.get('margaux')).toEqual([
-      { tagId: 'tag-duck', phrase: 'roast duck breast' },
-      { tagId: 'tag-mushroom', phrase: 'mushroom-stuffed beef tenderloin' },
-      { tagId: 'tag-hard-cheese', phrase: 'aged Gruyere' },
+      // "roast" is a modifier: the dish is a duck dish, and duck is its only anchor.
+      {
+        phrase: 'roast duck breast',
+        tagIds: ['tag-duck', 'tag-roasted'],
+        anchorTagIds: ['tag-duck'],
+      },
+      {
+        phrase: 'mushroom-stuffed beef tenderloin',
+        tagIds: ['tag-mushroom'],
+        anchorTagIds: ['tag-mushroom'], // no main ingredient in the vocabulary: secondary anchor
+      },
+      { phrase: 'aged Gruyere', tagIds: ['tag-hard-cheese'], anchorTagIds: ['tag-hard-cheese'] },
     ])
     expect(index.has('bare')).toBe(false)
   })
 
-  it('keeps the first phrase per tag and ignores fuzzy matches', () => {
-    const index = buildEditorialIndex(
-      [appellation('a', ['red'], { food_pairings: ['duck confit', 'duck breast', 'duk'] })],
-      tags,
-    )
-    expect(index.get('a')).toEqual([{ tagId: 'tag-duck', phrase: 'duck confit' }])
+  it('keeps a dish it cannot read (no tags) and ignores fuzzy matches', () => {
+    const index = buildEditorialIndex([appellation('a', ['red'], { food_pairings: ['duk'] })], tags)
+    expect(index.get('a')).toEqual([{ phrase: 'duk', tagIds: [], anchorTagIds: [] }])
+  })
+})
+
+describe('attributeDishes: a white and a red from one appellation are different wines', () => {
+  const tags = [
+    tag('game'),
+    tag('pork'),
+    tag('white-fish', ['river fish'], { category: 'seafood' }),
+    tag('grilled', ['grilled'], { category: 'preparation' }),
+  ]
+  const rates: Record<string, number> = {
+    'red:tag-game': 2,
+    'red:tag-pork': 1,
+    'red:tag-grilled': 1,
+    'white:tag-white-fish': 2,
+    'white:tag-pork': 1,
+    'rose:tag-pork': 1,
+  }
+  const affinity = (style: string, tagId: string) => rates[`${style}:${tagId}`] ?? 0
+
+  const macon = appellation('macon', ['white', 'red', 'rose'], {
+    food_pairings: ['grilled river fish', 'pork rillettes', 'rabbit stew', 'choucroute'],
+  })
+  // Rabbit isn't a vocabulary word here; give the stew a game synonym via the tag list.
+  const vocab = [
+    ...tags.slice(0, 1).map((t) => ({ ...t, synonyms: ['game', 'rabbit'] })),
+    ...tags.slice(1),
+  ]
+  const dishes = buildEditorialIndex([macon], vocab).get('macon')!
+
+  it('gives each style the dishes whose main ingredient it rates', () => {
+    const { byStyle, unattributed } = attributeDishes(dishes, ['white', 'red', 'rose'], affinity)
+    const phrases = (style: 'white' | 'red' | 'rose') => byStyle.get(style)!.map((d) => d.phrase)
+
+    expect(phrases('white')).toEqual(['grilled river fish', 'pork rillettes'])
+    expect(phrases('red')).toEqual(['pork rillettes', 'rabbit stew']) // not the white's fish
+    expect(phrases('rose')).toEqual(['pork rillettes'])
+    expect(unattributed.map((d) => d.phrase)).toEqual(['choucroute']) // unreadable: no tags
+  })
+
+  it('leaves a dish nobody rates unattributed, and hands a lone style every readable dish', () => {
+    const lone = attributeDishes(dishes, ['red'], affinity)
+    expect(lone.byStyle.get('red')!.map((d) => d.phrase)).toEqual([
+      'grilled river fish',
+      'pork rillettes',
+      'rabbit stew',
+    ])
+    expect(lone.unattributed.map((d) => d.phrase)).toEqual(['choucroute'])
+
+    const nobody = attributeDishes(dishes, ['sparkling', 'sweet'], () => 0)
+    expect(nobody.byStyle.get('sparkling')).toEqual([])
+    expect(nobody.unattributed).toHaveLength(4)
+  })
+
+  it('does not guess a style for a dish that names no main ingredient (only a cooking method)', () => {
+    const stew = [{ phrase: 'baeckeoffe stew', tagIds: ['tag-grilled'], anchorTagIds: [] }]
+    // Red rates the cooking method, but that alone doesn't make it a red-wine dish.
+    const many = attributeDishes(stew, ['white', 'red'], affinity)
+    expect(many.byStyle.get('red')).toEqual([])
+    expect(many.unattributed.map((d) => d.phrase)).toEqual(['baeckeoffe stew'])
+    // With one style there is nothing to guess: it owns the dish.
+    expect(attributeDishes(stew, ['red'], affinity).byStyle.get('red')).toHaveLength(1)
+  })
+
+  it('counts a curated override as the style rating the ingredient', () => {
+    const withOverride = (style: string, tagId: string) =>
+      affinity(style, tagId) + (style === 'red' && tagId === 'tag-white-fish' ? 1 : 0)
+    const { byStyle } = attributeDishes(dishes, ['white', 'red', 'rose'], withOverride)
+    expect(byStyle.get('red')!.map((d) => d.phrase)).toContain('grilled river fish')
+  })
+})
+
+describe('scoreAppellations: a dish only counts for the style it belongs to', () => {
+  // "Grilled game". Red rates game +2 and grilled +1; the white rates neither.
+  const dish: FoodTagMatch[] = [
+    match('game'),
+    {
+      tag: tag('grilled', ['grilled'], { category: 'preparation' }),
+      matchedPhrase: 'grilled',
+      confidence: 1,
+    },
+  ]
+  const base = [
+    baseline('red', 'game', 2),
+    baseline('red', 'grilled', 1),
+    baseline('white', 'white-fish', 2),
+  ]
+  const macon = appellation('macon', ['white', 'red'], { name: 'Mâcon' })
+  const dishes: EditorialIndex = new Map([
+    [
+      'macon',
+      [
+        {
+          phrase: 'grilled river fish',
+          tagIds: ['tag-grilled', 'tag-white-fish'],
+          anchorTagIds: ['tag-white-fish'],
+        },
+        { phrase: 'rabbit stew', tagIds: ['tag-game'], anchorTagIds: ['tag-game'] },
+      ],
+    ],
+  ])
+
+  it("does not let the white's fish dish lift the red's 'grilled'", () => {
+    const [result] = scoreAppellations([macon], dish, base, [], dishes)
+    const red = result!.styleScores.red!
+
+    expect(red.confirmedBy).toEqual(['rabbit stew']) // the fish dish is the white's, not the red's
+    expect(red.match).toBeCloseTo(7 + 1) // fit 7 + one confirmed ingredient — was 9 when the dish counted
+  })
+
+  it('still gives the red its own dish, and a single-style appellation every dish it can read', () => {
+    const single = appellation('single', ['red'], { name: 'Single' })
+    const both: EditorialIndex = new Map([['single', dishes.get('macon')!]])
+    const [result] = scoreAppellations([single], dish, base, [], both)
+    expect(result!.match).toBeCloseTo(9) // nothing to tell apart: both dishes confirm
   })
 })

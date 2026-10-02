@@ -19,6 +19,7 @@ import { useWineRegionsStore } from '@/stores/wineRegions'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
 import AppellationFlavorManager from './AppellationFlavorManager.vue'
 import AppellationFoodPairingManager from './AppellationFoodPairingManager.vue'
+import AppellationStyleProfileManager from './AppellationStyleProfileManager.vue'
 import AppellationCopyFields from './AppellationCopyFields.vue'
 import { copyFormFromRecord, copyFormToPayload } from '@/lib/appellationCopyForm'
 import { useFeedback } from '@/composables/useFeedback'
@@ -157,6 +158,7 @@ defineExpose({ openDialog })
           :appellation-id="appellationId ?? null"
           :wine-styles="copyForm.wine_styles"
         />
+        <AppellationStyleProfileManager :appellation-id="appellationId ?? null" />
         <AppellationFoodPairingManager :appellation-id="appellationId ?? null" />
         <FeedbackBanner :feedback="feedback" />
         <DialogFooter>

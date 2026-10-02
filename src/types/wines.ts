@@ -5,13 +5,7 @@ export type WineStyle = 'red' | 'white' | 'rosé' | 'sparkling' | 'dessert'
 /* --- Structured intake fields that determine archetype selection ---
  * Free-text at the DB layer (nullable); these unions document the expected
  * values the engine understands. Anything else is treated as unset. */
-export type PredikatLevel =
-  | 'Kabinett'
-  | 'Spätlese'
-  | 'Auslese'
-  | 'BA'
-  | 'TBA'
-  | 'Eiswein'
+export type PredikatLevel = 'Kabinett' | 'Spätlese' | 'Auslese' | 'BA' | 'TBA' | 'Eiswein'
 export type Sweetness = 'Sec' | 'Demi-Sec' | 'Moelleux' | 'Doux'
 export type JuraStyle = 'ouille' | 'sousvoile'
 export type FriuliStyle = 'skinContact' | 'conventional'
@@ -87,7 +81,10 @@ export interface UserWine {
   /** Grapes picked from the reference list */
   grapes: GrapeRef[]
   vintage: number
+  /** Display style: a missing DB value reads as 'red' here — check `styleKnown` before trusting it. */
   style: WineStyle
+  /** False when the DB row has no style; `style` above is then only a display default. */
+  styleKnown: boolean
   quantity: number
   rating: number
   readyToDrink: string
@@ -152,6 +149,7 @@ export function wineRecordToUserWine(r: WineRecord): UserWine {
       .sort((a, b) => a.name.localeCompare(b.name)),
     vintage: r.vintage ?? 0,
     style: r.style ?? 'red',
+    styleKnown: r.style !== null,
     quantity: r.quantity,
     rating: r.rating ?? 0,
     readyToDrink: r.ready_to_drink ?? '',

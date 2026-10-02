@@ -1,12 +1,10 @@
 /** Matched food tags → appellation and cellar-wine scores. Pure: no Supabase, no Vue. */
+import { attributeDishes } from '@/lib/foodPairingEditorial'
 import type { EditorialIndex } from '@/lib/foodPairingEditorial'
+import { MAIN_INGREDIENT_CATEGORIES } from '@/lib/foodTagCategories'
 import type { FoodTagMatch } from '@/lib/foodTagMatcher'
 import { toAppellationStyle } from '@/lib/wineStyles'
-import type {
-  AppellationFoodPairingRecord,
-  FoodTagCategory,
-  WineStyleFoodPairingRecord,
-} from '@/types/foodPairings'
+import type { AppellationFoodPairingRecord, WineStyleFoodPairingRecord } from '@/types/foodPairings'
 import type { WineAppellationRecord, WineStyle } from '@/types/wineAppellations'
 import type { WineRecord } from '@/types/wines'
 
@@ -95,9 +93,11 @@ export function computeMatch(signals: TagSignal[], evidence = 0): { score: numbe
  *  score. Never filters, sorts or truncates: display-side cuts belong to the caller, so
  *  scoreCellarWines can always look up any appellation.
  *
- *  `editorial` (optional) is what each appellation's own classic pairings mention. It confirms
- *  a dish ingredient only for a style that already rates it well, and never where an editor
- *  curated an override for that (appellation, style, tag) — the override speaks for itself. */
+ *  `editorial` (optional) is each appellation's own classic dishes. A dish only counts for the
+ *  styles that own it (they rate its main ingredient well) — a white's grilled river fish
+ *  can't lift the red — and it confirms a dish ingredient only for a style that also rates
+ *  that ingredient, and never where an editor curated an override for that (appellation,
+ *  style, tag): the override speaks for itself. */
 export function scoreAppellations(
   appellations: WineAppellationRecord[],
   matches: FoodTagMatch[],
@@ -119,8 +119,18 @@ export function scoreAppellations(
     // No wine_styles yet (e.g. copy still pending): there is no scoreable baseline. Never guess.
     if (styles.length === 0) continue
 
-    const phraseByTag = new Map(
-      (editorial?.get(appellation.id) ?? []).map((mention) => [mention.tagId, mention.phrase]),
+    // Which of the appellation's classic dishes belong to which style, judged with the same
+    // affinities the scoring uses (baseline plus any curated override).
+    const attribution = attributeDishes(
+      editorial?.get(appellation.id) ?? [],
+      styles,
+      (style, tagId) => {
+        const key = `${style}:${tagId}`
+        return (
+          (baselineByStyleTag.get(key) ?? 0) +
+          (overrideByAppStyleTag.get(`${appellation.id}:${key}`) ?? 0)
+        )
+      },
     )
     const styleScores: Partial<Record<WineStyle, StyleScore>> = {}
 
@@ -130,6 +140,12 @@ export function scoreAppellations(
       const positiveTagIds: string[] = []
       const confirmedBy = new Set<string>()
       let evidence = 0
+
+      const phraseByTag = new Map<string, string>()
+      for (const dish of attribution.byStyle.get(style) ?? []) {
+        for (const tagId of dish.tagIds)
+          if (!phraseByTag.has(tagId)) phraseByTag.set(tagId, dish.phrase)
+      }
 
       for (const [tagId, confidence] of confidenceByTag) {
         const baseAffinity = baselineByStyleTag.get(`${style}:${tagId}`) ?? 0
@@ -299,10 +315,6 @@ export function compareCellarMatches(a: CellarWineMatch, b: CellarWineMatch): nu
     a.wine.name.localeCompare(b.wine.name)
   )
 }
-
-/** Tags in these categories name the dish's "parts"; results are only split by them.
- *  Modifiers (a cooking style, a flavour, a cuisine) refine every part, they aren't one. */
-const MAIN_INGREDIENT_CATEGORIES: readonly FoodTagCategory[] = ['protein', 'seafood']
 
 export function mainIngredientMatches(matches: FoodTagMatch[]): FoodTagMatch[] {
   return matches.filter((m) => MAIN_INGREDIENT_CATEGORIES.includes(m.tag.category))

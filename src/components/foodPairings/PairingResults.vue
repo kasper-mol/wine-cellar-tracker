@@ -79,6 +79,24 @@ function whyLine(tagIds: string[]) {
   return names.length ? `Pairs with ${names.join(', ').toLowerCase()}` : ''
 }
 
+/** A white and a red from one appellation are different wines: say how its other styles fare. */
+function alsoLine(result: AppellationPairingResult) {
+  const others = Object.entries(result.styleScores)
+    .filter(([style, entry]) => style !== result.drivingStyle && entry && entry.score > 0)
+    .sort(([, a], [, b]) => (b?.match ?? 0) - (a?.match ?? 0))
+    .slice(0, 2)
+    .map(
+      ([style, entry]) =>
+        `${wineStyleLabel(style).toLowerCase()} ${Math.round(entry?.match ?? 0)}/10`,
+    )
+  return others.length ? `Also as ${others.join(', ')}` : ''
+}
+
+/** Opens the appellation page on the style that matched, so a red hit doesn't land on the white. */
+function appellationLink(id: string, style: string | null) {
+  return { name: 'appellation-detail', params: { id }, query: style ? { style } : {} }
+}
+
 /** The appellation's own classic pairings that back the match up, if any. */
 function classicLine(confirmedBy: string[]) {
   return confirmedBy.length ? `A classic here: ${confirmedBy.slice(0, 2).join(', ')}` : ''
@@ -143,7 +161,7 @@ function classicLine(confirmedBy: string[]) {
             >
               <MatchScore :match="result.match" class="row-span-2 self-center" />
               <RouterLink
-                :to="`/appellation/${result.appellation.id}`"
+                :to="appellationLink(result.appellation.id, result.drivingStyle)"
                 class="font-heading text-[22px] leading-[1.2] transition-colors hover:text-accent-700"
               >
                 {{ result.appellation.name }}
@@ -157,6 +175,7 @@ function classicLine(confirmedBy: string[]) {
                 <template v-if="classicLine(result.confirmedBy)">
                   · {{ classicLine(result.confirmedBy) }}
                 </template>
+                <template v-if="alsoLine(result)"> · {{ alsoLine(result) }} </template>
               </p>
             </li>
           </ul>
@@ -212,7 +231,7 @@ function classicLine(confirmedBy: string[]) {
                   <span v-if="item.wine.producer" class="italic">{{ item.wine.producer }} · </span>
                   <RouterLink
                     v-if="item.wine.appellation_info"
-                    :to="`/appellation/${item.wine.appellation_info.id}`"
+                    :to="appellationLink(item.wine.appellation_info.id, item.drivingStyle)"
                     class="hover:text-accent-700"
                   >
                     {{ item.wine.appellation_info.name }}

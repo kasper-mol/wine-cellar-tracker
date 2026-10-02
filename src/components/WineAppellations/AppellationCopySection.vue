@@ -13,19 +13,27 @@ const props = defineProps<{
   drinkingWindow: string | null
   foodPairings: string[] | null
   funFact: string | null
+  /** Several wine styles: the grapes, styles, style summary and drinking window are shown per
+   *  style beneath the style switcher instead, so they are left out here. */
+  splitByStyle?: boolean
 }>()
 
 const hasChips = computed(
-  () => Boolean(props.signatureGrapes?.length) || Boolean(props.wineStyles?.length),
+  () =>
+    !props.splitByStyle &&
+    (Boolean(props.signatureGrapes?.length) || Boolean(props.wineStyles?.length)),
 )
 
 /** Each fact stands on its own row; the block itself goes when none survive. */
 const facts = computed(() =>
   [
-    { label: 'Style', value: props.styleSummary },
+    { label: 'Style', value: props.splitByStyle ? null : props.styleSummary },
     { label: 'Climate & soil', value: props.climateSoil },
-    { label: 'Drinking window', value: props.drinkingWindow },
-    { label: 'Classic pairings', value: props.foodPairings?.length ? props.foodPairings.join(' · ') : null },
+    { label: 'Drinking window', value: props.splitByStyle ? null : props.drinkingWindow },
+    {
+      label: 'Classic pairings',
+      value: props.foodPairings?.length ? props.foodPairings.join(' · ') : null,
+    },
   ].filter((fact): fact is { label: string; value: string } => Boolean(fact.value)),
 )
 </script>

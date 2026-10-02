@@ -271,6 +271,7 @@ function draftWine(): UserWine {
     grapes: selectedGrapes.value,
     vintage: Number(form.vintage) || 0,
     style: (form.style || 'red') as WineStyle,
+    styleKnown: !!form.style,
     quantity: Number(form.quantity) || 0,
     rating: Number(form.rating) || 0,
     readyToDrink: form.readyToDrink,

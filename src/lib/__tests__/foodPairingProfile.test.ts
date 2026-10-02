@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildPairingProfile } from '@/lib/foodPairingProfile'
+import type { EditorialDish } from '@/lib/foodPairingEditorial'
+import { buildAppellationPairings, buildPairingProfile } from '@/lib/foodPairingProfile'
 import { baseline, override, tag } from './fixtures'
 
 const tags = [tag('oysters'), tag('steak'), tag('goat-cheese'), tag('salmon')]
@@ -67,5 +68,67 @@ describe('buildPairingProfile', () => {
       { limit: 2 },
     )
     expect(profile[0]!.tags).toHaveLength(2)
+  })
+})
+
+describe('buildAppellationPairings: a white and a red from one appellation are different wines', () => {
+  const vocab = [tag('game'), tag('white-fish', ['fish'], { category: 'seafood' }), tag('pork')]
+  const base = [
+    baseline('red', 'game', 2),
+    baseline('red', 'pork', 2),
+    baseline('white', 'white-fish', 2),
+    baseline('white', 'pork', 2),
+  ]
+  const dish = (phrase: string, slug: string): EditorialDish => ({
+    phrase,
+    tagIds: [`tag-${slug}`],
+    anchorTagIds: [`tag-${slug}`],
+  })
+  const dishes = [
+    dish('grilled river fish', 'white-fish'),
+    dish('pork rillettes', 'pork'),
+    dish('rabbit stew', 'game'),
+    { phrase: 'choucroute', tagIds: [], anchorTagIds: [] },
+  ]
+
+  it("lists each style's own classic dishes beside its tags, and the rest as any-style", () => {
+    const { styles, unattributed } = buildAppellationPairings(
+      ['white', 'red'],
+      vocab,
+      base,
+      [],
+      dishes,
+    )
+    expect(styles.map((s) => [s.style, s.dishes, s.tags.map((t) => t.tag.slug)])).toEqual([
+      ['white', ['grilled river fish', 'pork rillettes'], ['white-fish', 'pork']],
+      ['red', ['pork rillettes', 'rabbit stew'], ['game', 'pork']],
+    ])
+    expect(unattributed).toEqual(['choucroute'])
+  })
+
+  it('leaves the flat prose alone for a single-style appellation: nothing is split or repeated', () => {
+    const { styles, unattributed } = buildAppellationPairings(['red'], vocab, base, [], dishes)
+    expect(styles.map((s) => [s.style, s.dishes])).toEqual([['red', []]])
+    expect(unattributed).toEqual([])
+  })
+
+  it('a curated override makes the style own the dish', () => {
+    const { styles } = buildAppellationPairings(
+      ['white', 'red'],
+      vocab,
+      base,
+      [override('a', 'red', 'white-fish', 1)], // red rated fish at +1 by an editor
+      dishes,
+    )
+    expect(styles.find((s) => s.style === 'red')!.dishes).toContain('grilled river fish')
+  })
+
+  it('omits a style with nothing to say and copes with no styles at all', () => {
+    const { styles } = buildAppellationPairings(['white', 'sparkling'], vocab, base, [], dishes)
+    expect(styles.map((s) => s.style)).toEqual(['white'])
+    expect(buildAppellationPairings(null, vocab, base, [], dishes)).toEqual({
+      styles: [],
+      unattributed: [],
+    })
   })
 })
