@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isMultiStyle, styleFacts } from '@/lib/appellationStyleView'
+import { flavorRowsForPage, isMultiStyle, styleFacts } from '@/lib/appellationStyleView'
 
 const shared = {
   style_summary: 'Full-bodied and warm reds.',
@@ -73,5 +73,26 @@ describe('styleFacts', () => {
       drinkingWindowIsShared: false,
       grapesAreShared: false,
     })
+  })
+})
+
+describe('flavorRowsForPage', () => {
+  const rows = [
+    { wine_style: 'white', name: 'citrus' },
+    { wine_style: 'red', name: 'cherry' },
+    { wine_style: 'sweet', name: 'honey' },
+  ]
+
+  it('shows only the selected style on a multi-style page', () => {
+    expect(flavorRowsForPage(rows, ['white', 'red'], 'red')).toEqual([rows[1]])
+  })
+
+  it('drops flavours of a style a single-style appellation no longer lists', () => {
+    expect(flavorRowsForPage(rows, ['white'], null)).toEqual([rows[0]])
+  })
+
+  it('keeps everything when the appellation lists no styles', () => {
+    expect(flavorRowsForPage(rows, null, null)).toEqual(rows)
+    expect(flavorRowsForPage(rows, [], null)).toEqual(rows)
   })
 })

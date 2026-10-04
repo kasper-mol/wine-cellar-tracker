@@ -42,3 +42,17 @@ export function styleFacts(
     grapesAreShared: !ownGrapes && !!appellation.signature_grapes?.length,
   }
 }
+
+/** Flavour rows worth showing on an appellation page: the selected style's own on a multi-style
+ *  page, otherwise only styles the appellation still lists. A style dropped from `wine_styles`
+ *  (e.g. red Puligny) can leave flavour rows behind; they must not pass for the wine on show. */
+export function flavorRowsForPage<Row extends { wine_style: string }>(
+  rows: Row[],
+  wineStyles: readonly string[] | null | undefined,
+  selectedStyle: string | null,
+): Row[] {
+  if (wineStyles && wineStyles.length > 1) {
+    return selectedStyle ? rows.filter((row) => row.wine_style === selectedStyle) : rows
+  }
+  return wineStyles?.length ? rows.filter((row) => wineStyles.includes(row.wine_style)) : rows
+}

@@ -13,7 +13,7 @@ import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable
 import { Seg, SegOption } from '@/components/ui/seg'
 import PhaseMark from '@/components/wines/PhaseMark.vue'
 import { useCellarHoldings } from '@/composables/useCellarHoldings'
-import { isMultiStyle } from '@/lib/appellationStyleView'
+import { flavorRowsForPage, isMultiStyle } from '@/lib/appellationStyleView'
 import { formatWindow } from '@/lib/cellar'
 import { toAppellationStyle, wineStyleLabel } from '@/lib/wineStyles'
 import { useAppellationFlavorsStore } from '@/stores/appellationFlavors'
@@ -104,9 +104,7 @@ const activeProfile = computed(() =>
     : undefined,
 )
 const flavorRowsShown = computed(() =>
-  multi.value && selectedStyle.value
-    ? flavorRows.value.filter((row) => row.wine_style === selectedStyle.value)
-    : flavorRows.value,
+  flavorRowsForPage(flavorRows.value, appellation.value?.wine_styles, selectedStyle.value),
 )
 
 const region = computed(() => {
