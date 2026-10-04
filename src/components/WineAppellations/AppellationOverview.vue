@@ -72,6 +72,7 @@ const twoColumn = computed(() => (props.description?.length ?? 0) > 240)
     </div>
 
     <PlateFigure
+      v-if="imageUrl"
       class="max-lg:order-first max-md:order-none max-lg:w-full"
       :src="imageUrl"
       :alt="`Map of ${name}`"

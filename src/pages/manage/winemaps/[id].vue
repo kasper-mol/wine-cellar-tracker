@@ -4,16 +4,27 @@ import { useRoute } from 'vue-router'
 import { Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Seg, SegOption } from '@/components/ui/seg'
 import { useWineMapsStore } from '@/stores/wineMaps'
-import type { WineMapAreaRecord } from '@/types/wineMaps'
+import type { WineMapAreaRecord, WineMapOverlayKind } from '@/types/wineMaps'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import FeedbackBanner from '@/components/FeedbackBanner.vue'
+import WineMapCanvas from '@/components/WineCountries/WineMapCanvas.vue'
+import DotPairingPanel from '@/components/manage/winemaps/DotPairingPanel.vue'
+import MapLayerElementEditor from '@/components/manage/winemaps/MapLayerElementEditor.vue'
+import MapLayerElementTable from '@/components/manage/winemaps/MapLayerElementTable.vue'
+import MapLayerManager from '@/components/manage/winemaps/MapLayerManager.vue'
+import { useFeedback } from '@/composables/useFeedback'
+import { useWineMapOverlayEditor } from '@/composables/useWineMapOverlayEditor'
+import { fetchSvgText } from '@/lib/svgUtils'
 
 const route = useRoute()
 const wineMapsStore = useWineMapsStore()
 const confirmRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
-const mapContainer = ref<HTMLElement | null>(null)
-const svgMarkup = ref('')
+const canvas = ref<InstanceType<typeof WineMapCanvas> | null>(null)
+/** The base map's own container: area lookups stay inside it, away from the overlays. */
+const mapContainer = computed<HTMLElement | null>(() => canvas.value?.baseContainer ?? null)
 const saving = ref(false)
 const savingMap = ref(false)
 const importing = ref(false)
@@ -59,6 +70,51 @@ const interactiveAreas = computed(() => visibleAreas.value.filter((area) => !are
 
 const assetVersions = computed(() => wineMapsStore.assetVersions)
 const activeAssetVersionId = computed(() => adminMap.value?.active_asset_version_id ?? null)
+
+const { feedback: overlayFeedback, setError: setOverlayError } = useFeedback()
+const {
+  mode,
+  shown,
+  canvasOverlays,
+  visibleKinds,
+  rawSvg,
+  baseMarkup,
+  svgError,
+  presentKinds,
+  interactiveKind,
+  activeLayer,
+  activeKeys,
+  selectedKey,
+  selectedDotKey,
+  selectedRow,
+  pickingDotForId,
+  highlightKeys,
+  selectKey,
+  handleElementClick,
+} = useWineMapOverlayEditor((error) => setOverlayError(error))
+
+const OVERLAY_KINDS: WineMapOverlayKind[] = ['water', 'places']
+const OVERLAY_DESCRIPTIONS: Record<WineMapOverlayKind, string> = {
+  water:
+    'Rivers, lakes and seas as paths, plus small text labels for them. Draw rivers with no fill and lakes or seas filled.',
+  places:
+    'Towns, cities and mountains as dots and text names. Keep text as text. Only small shapes count as dots; larger shapes are ignored. Dots are paired with their names under the preview.',
+}
+
+function hasOverlay(kind: WineMapOverlayKind) {
+  return canvasOverlays.value.some((overlay) => overlay.kind === kind)
+}
+
+function measurePlaces() {
+  return canvas.value?.measure('places') ?? null
+}
+
+const previewHint = computed(() => {
+  if (pickingDotForId.value) return 'Click the dot that belongs to this place.'
+  if (mode.value === 'water') return 'Click a river, lake or label in the SVG, or a row below.'
+  if (mode.value === 'places') return 'Click a dot or a name in the SVG, or a row below.'
+  return 'Click an area in the SVG or in the table below.'
+})
 
 function normalizeSvgKey(value: string) {
   return value.trim().toLowerCase()
@@ -140,9 +196,7 @@ watch(
 )
 
 async function fetchSvg(url: string) {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`Failed to load SVG: ${url}`)
-  svgMarkup.value = await response.text()
+  rawSvg.value = await fetchSvgText(url)
 }
 
 function getSvgElementByAreaId(svgAreaId: string): HTMLElement | null {
@@ -295,17 +349,34 @@ async function saveMapDefinition() {
   }
 }
 
-async function importAreas() {
+async function importFromSvg() {
   if (!adminMap.value) return
 
   importing.value = true
   importMessage.value = null
 
   try {
-    const result = await wineMapsStore.importAreasForAdminMap()
-    importMessage.value = `Imported ${result.totalCount} keys (${result.createdCount} new, ${result.existingCount} existing)`
+    const { areas, layers } = await wineMapsStore.importSvgForAdminMap()
+    const parts = [`${areas.totalCount} areas (${areas.createdCount} new)`]
+    for (const layer of layers) {
+      parts.push(`${layer.kind}: ${layer.totalCount} elements (${layer.createdCount} new)`)
+    }
+    importMessage.value = `Read ${parts.join(', ')}`
+
+    const warnings = layers.flatMap((layer) => [
+      ...(layer.missingKeys.length
+        ? [`${layer.kind}: ${layer.missingKeys.length} saved rows are no longer in the SVG`]
+        : []),
+      ...(layer.duplicateKeys.length
+        ? [`${layer.kind}: several elements share a label (${layer.duplicateKeys.join(', ')})`]
+        : []),
+    ])
+    if (warnings.length) importMessage.value += `. ${warnings.join('. ')}`
+
     await nextTick()
     applySvgBindings()
+  } catch (error) {
+    importMessage.value = error instanceof Error ? error.message : 'Import failed'
   } finally {
     importing.value = false
   }
@@ -328,7 +399,7 @@ async function uploadNewVersion() {
       uploadNotes.value.trim() || null,
     )
 
-    replaceMessage.value = `Uploaded v${result.assetVersion.version_number}. Now run “Import SVG areas”.`
+    replaceMessage.value = `Uploaded v${result.assetVersion.version_number}. Now run “Import from SVG”.`
     selectedFile.value = null
     uploadNotes.value = ''
     if (fileInput.value) fileInput.value.value = ''
@@ -350,7 +421,7 @@ async function handleDeleteArea(area: WineMapAreaRecord) {
   const label = area.label || area.svg_area_id
   const confirmed = await confirmRef.value?.confirm({
     title: 'Delete map area',
-    body: `“${label}” and its mapping will be removed. It can be re-added later with “Import SVG areas”.`,
+    body: `“${label}” and its mapping will be removed. It can be re-added later with “Import from SVG”.`,
     confirmLabel: 'Delete',
   })
   if (!confirmed) return
@@ -397,7 +468,7 @@ onMounted(loadPage)
 watch(
   () => route.params.id,
   async () => {
-    svgMarkup.value = ''
+    rawSvg.value = ''
     await loadPage()
   },
 )
@@ -529,8 +600,8 @@ watch(
             {{ savingMap ? 'Saving map...' : 'Save map' }}
           </Button>
 
-          <Button :disabled="importing || !adminMap?.svgAssetPath" @click="importAreas">
-            {{ importing ? 'Importing...' : 'Import SVG areas' }}
+          <Button :disabled="importing || !adminMap?.svgAssetPath" @click="importFromSvg">
+            {{ importing ? 'Importing...' : 'Import from SVG' }}
           </Button>
 
           <span v-if="mapSaveMessage" class="text-sm text-muted-foreground">{{
@@ -614,23 +685,85 @@ watch(
       </div>
     </div>
 
+    <div v-if="adminMap" class="space-y-4 border-y border-border py-4">
+      <div>
+        <h2 class="text-lg font-semibold text-foreground">Overlay layers</h2>
+        <p class="text-sm text-muted-foreground">
+          Water and place names are Inkscape layers named “water” and “places” inside the map's one
+          SVG; every other layer is a map area. Save the file as Inkscape SVG (not Plain SVG) so the
+          layer names survive. Visitors can switch each layer on and off.
+        </p>
+      </div>
+
+      <FeedbackBanner :feedback="overlayFeedback" />
+      <p
+        v-if="svgError"
+        class="border-l-2 border-destructive py-1.5 pl-3 text-[13px] text-destructive"
+      >
+        {{ svgError }}
+      </p>
+
+      <div class="grid gap-4 xl:grid-cols-2">
+        <MapLayerManager
+          v-for="kind in OVERLAY_KINDS"
+          :key="kind"
+          :kind="kind"
+          :description="OVERLAY_DESCRIPTIONS[kind]"
+          :present="presentKinds.includes(kind)"
+        />
+      </div>
+    </div>
+
     <div v-if="adminMap" class="grid gap-6 xl:grid-cols-[minmax(0,2fr)_420px]">
       <div class="rounded-md border border-border p-3">
-        <div class="mb-4">
-          <h2 class="text-lg font-semibold text-foreground">SVG Preview</h2>
-          <p class="text-sm text-muted-foreground">
-            Click an area in the SVG or in the table below.
-          </p>
+        <div class="mb-4 space-y-3">
+          <div>
+            <h2 class="text-lg font-semibold text-foreground">SVG Preview</h2>
+            <p class="text-sm text-muted-foreground">{{ previewHint }}</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Seg v-model="mode" aria-label="What to edit">
+              <SegOption value="areas">Areas</SegOption>
+              <SegOption value="water" :disabled="!hasOverlay('water')">Water</SegOption>
+              <SegOption value="places" :disabled="!hasOverlay('places')">Places</SegOption>
+            </Seg>
+
+            <label
+              v-for="kind in OVERLAY_KINDS.filter(hasOverlay)"
+              :key="kind"
+              class="flex items-center gap-2 text-sm"
+            >
+              <input v-model="shown[kind]" type="checkbox" />
+              <span>Show {{ kind }}</span>
+            </label>
+          </div>
         </div>
 
-        <div
-          ref="mapContainer"
+        <WineMapCanvas
+          ref="canvas"
           class="min-h-[500px] rounded-lg border bg-muted/20 p-4"
-          v-html="svgMarkup"
+          :base-markup="baseMarkup"
+          :overlays="canvasOverlays"
+          :visible-kinds="visibleKinds"
+          :interactive-kind="interactiveKind"
+          :selected-keys="highlightKeys"
+          @element-click="handleElementClick"
         />
       </div>
 
-      <div class="rounded-md border border-border p-3">
+      <MapLayerElementEditor
+        v-if="mode !== 'areas' && activeLayer"
+        :layer="activeLayer"
+        :row="selectedRow"
+        :selected-key="selectedKey"
+        :unpaired-dot-key="selectedDotKey"
+        :picking="Boolean(pickingDotForId)"
+        @pick-dot="pickingDotForId = $event"
+        @cancel-pick="pickingDotForId = null"
+      />
+
+      <div v-else class="rounded-md border border-border p-3">
         <div class="mb-4">
           <h2 class="text-lg font-semibold text-foreground">Area Editor</h2>
         </div>
@@ -742,7 +875,21 @@ watch(
       </div>
     </div>
 
-    <div v-if="adminMap" class="rounded-md border border-border p-3">
+    <template v-if="adminMap && mode !== 'areas' && activeLayer">
+      <DotPairingPanel
+        v-if="activeLayer.kind === 'places'"
+        :layer="activeLayer"
+        :measure="measurePlaces"
+      />
+      <MapLayerElementTable
+        :layer="activeLayer"
+        :selected-key="selectedKey"
+        :expected-keys="activeKeys"
+        @select="selectKey"
+      />
+    </template>
+
+    <div v-else-if="adminMap" class="rounded-md border border-border p-3">
       <div class="mb-4">
         <h2 class="text-lg font-semibold text-foreground">Areas</h2>
         <p class="text-sm text-muted-foreground">
@@ -754,7 +901,7 @@ watch(
         v-if="!visibleAreas.length"
         class="border-y border-border py-3 text-sm text-foreground/[0.55]"
       >
-        No areas imported yet. Click “Import SVG areas”.
+        No areas imported yet. Click “Import from SVG”.
       </div>
 
       <div v-else class="overflow-x-auto">

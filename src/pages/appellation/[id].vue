@@ -8,7 +8,6 @@ import AppellationFlavorSection from '@/components/WineAppellations/AppellationF
 import AppellationFoodPairingSection from '@/components/WineAppellations/AppellationFoodPairingSection.vue'
 import AppellationOverview from '@/components/WineAppellations/AppellationOverview.vue'
 import AppellationStyleFacts from '@/components/WineAppellations/AppellationStyleFacts.vue'
-import GrapeCompositionSection from '@/components/WineAppellations/GrapeCompositionSection.vue'
 import VintageRatingsTable from '@/components/vintageRatings/VintageRatingsTable.vue'
 import { Seg, SegOption } from '@/components/ui/seg'
 import PhaseMark from '@/components/wines/PhaseMark.vue'
@@ -58,7 +57,6 @@ const configReady = ref(false)
 
 const appellation = computed(() => appellations.value.find((a) => a.id === appellationId))
 const grapeRules = computed(() => grapeAppellationsStore.rulesForAppellation(appellationId))
-const grapeRulesLoading = computed(() => grapeRulesLoadingMap.value[appellationId] ?? false)
 const flavorRows = computed(() => appellationFlavorsStore.forAppellation(appellationId))
 const flavorLoading = computed(() => flavorLoadingMap.value[appellationId] ?? false)
 const foodPairingOverrides = computed(() => foodPairingsStore.forAppellation(appellationId))

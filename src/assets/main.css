@@ -60,6 +60,11 @@
     --neutral-800: #444141;
     --neutral-900: #2d2b2b;
 
+    /* Map water: lakes and seas (300), rivers and shorelines (500), river names (700). */
+    --water-300: #c9dbe2;
+    --water-500: #7ea2b3;
+    --water-700: #476d7f;
+
     --font-heading: 'Cormorant Garamond', system-ui, serif;
     --font-body: 'Lora', system-ui, serif;
 

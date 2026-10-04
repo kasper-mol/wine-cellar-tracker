@@ -2,30 +2,44 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import {
   createWineMap,
+  deleteLayerElement,
+  ensureWineMapLayer,
   deleteWineMapArea,
   getWineMapById,
   getWineMapByKey,
   getWineMapsForCountry,
-  importWineMapAreas,
+  getWineMapsForRegion,
+  importWineMapSvg,
+  listLayerElements,
   listWineMaps,
   listWineMapAssetVersions,
+  replaceLayerDotPairs,
   replaceWineMapAsset,
   resolveWineMapArea,
+  updateLayerElement,
   updateWineMapArea,
   updateWineMapDefinition,
+  updateWineMapLayer,
 } from '@/services/wineMaps'
+import { isValidWineMapSubtype } from '@/content/wineMapLayers'
 import { fetchWineCountries } from '@/services/wineCountries'
 import { fetchWineRegions } from '@/services/wineRegions'
 import { fetchWineAppellations } from '@/services/wineAppellations'
 import type {
   CreateWineMapPayload,
+  WineMapAdminLayerRecord,
   WineMapAdminRecord,
   WineMapAreaRecord,
   WineMapAreaUpdatePayload,
   WineMapAssetVersionRecord,
   WineMapDefinitionRecord,
   WineMapDefinitionUpdatePayload,
+  WineMapDotPair,
   WineMapDto,
+  WineMapLayerElementRecord,
+  WineMapLayerElementUpdatePayload,
+  WineMapLayerUpdatePayload,
+  WineMapOverlayKind,
 } from '@/types/wineMaps'
 import type { WineCountryRecord } from '@/types/wineCountries'
 import type { WineRegionRecord } from '@/types/wineRegions'
@@ -63,6 +77,15 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     loading.value = true
     try {
       maps.value = await getWineMapsForCountry(countryId)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchMapsForRegion(regionId: string) {
+    loading.value = true
+    try {
+      maps.value = await getWineMapsForRegion(regionId)
     } finally {
       loading.value = false
     }
@@ -152,14 +175,87 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     return updated
   }
 
-  async function importAreasForAdminMap() {
+  /** Read the map's SVG: add rows for new areas, and for the `water` / `places` layers in it. */
+  async function importSvgForAdminMap() {
     if (!adminMap.value) {
       throw new Error('No admin map loaded')
     }
 
-    const result = await importWineMapAreas(adminMap.value.id)
+    const result = await importWineMapSvg(adminMap.value.id)
     adminMap.value = await getWineMapById(adminMap.value.id)
     return result
+  }
+
+  function adminLayer(kind: WineMapOverlayKind): WineMapAdminLayerRecord | null {
+    return adminMap.value?.layers.find((layer) => layer.kind === kind) ?? null
+  }
+
+  function requireAdminLayer(layerId: string): WineMapAdminLayerRecord {
+    const layer = adminMap.value?.layers.find((item) => item.id === layerId)
+    if (!layer) throw new Error('Wine map layer not loaded')
+    return layer
+  }
+
+  /** The settings row for an overlay found in the SVG, created with defaults if it is new. */
+  async function ensureLayer(kind: WineMapOverlayKind): Promise<WineMapAdminLayerRecord> {
+    const map = adminMap.value
+    if (!map) throw new Error('No admin map loaded')
+
+    const existing = adminLayer(kind)
+    if (existing) return existing
+
+    const created = await ensureWineMapLayer(map.id, kind)
+    // A concurrent call may have added the row while we waited.
+    const raced = map.layers.find((layer) => layer.kind === kind)
+    if (raced) return raced
+
+    const layer: WineMapAdminLayerRecord = { ...created, elements: [] }
+    map.layers.push(layer)
+    return layer
+  }
+
+  async function saveLayer(layerId: string, payload: WineMapLayerUpdatePayload) {
+    const updated = await updateWineMapLayer(layerId, payload)
+
+    const layer = requireAdminLayer(layerId)
+    Object.assign(layer, updated)
+
+    return updated
+  }
+
+  async function reloadLayerElements(layerId: string) {
+    requireAdminLayer(layerId).elements = await listLayerElements(layerId)
+  }
+
+  async function saveLayerElement(
+    layerId: string,
+    elementId: string,
+    payload: WineMapLayerElementUpdatePayload,
+  ): Promise<WineMapLayerElementRecord> {
+    const layer = requireAdminLayer(layerId)
+    if (payload.subtype && !isValidWineMapSubtype(layer.kind, payload.subtype)) {
+      throw new Error(`"${payload.subtype}" is not a ${layer.kind} subtype`)
+    }
+
+    const updated = await updateLayerElement(elementId, payload)
+
+    const index = layer.elements.findIndex((element) => element.id === elementId)
+    if (index !== -1) layer.elements[index] = updated
+
+    return updated
+  }
+
+  async function removeLayerElement(layerId: string, elementId: string) {
+    await deleteLayerElement(elementId)
+
+    const layer = requireAdminLayer(layerId)
+    layer.elements = layer.elements.filter((element) => element.id !== elementId)
+  }
+
+  /** Replace the places layer's dot ↔ name pairing with exactly these pairs. */
+  async function applyDotPairs(layerId: string, pairs: WineMapDotPair[]) {
+    await replaceLayerDotPairs(layerId, pairs)
+    await reloadLayerElements(layerId)
   }
 
   function selectAreaByRowId(id: string | null) {
@@ -220,6 +316,7 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     loading,
     fetchMaps,
     fetchMapsForCountry,
+    fetchMapsForRegion,
     loadMap,
     resolveArea,
     loadAdminMap,
@@ -227,7 +324,13 @@ export const useWineMapsStore = defineStore('wineMaps', () => {
     addWineMap,
     replaceMapAsset,
     saveMapDefinition,
-    importAreasForAdminMap,
+    importSvgForAdminMap,
+    adminLayer,
+    ensureLayer,
+    saveLayer,
+    saveLayerElement,
+    removeLayerElement,
+    applyDotPairs,
     selectAreaByRowId,
     selectAreaBySvgAreaId,
     saveArea,

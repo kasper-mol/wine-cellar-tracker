@@ -1,11 +1,22 @@
 import { getSupabaseClient, throwIfError } from '@/lib/supabase'
-import { fetchSvgText, extractSvgAreaKeys, normalizeSvgKey } from '@/lib/svgUtils'
+import {
+  defaultSubtypeFor,
+  extractSvgAreaKeys,
+  extractSvgLayerElements,
+  fetchSvgText,
+  normalizeSvgKey,
+  splitOverlayLayers,
+} from '@/lib/svgUtils'
 import { uploadWineMapSvg, safeAssetName, fileChecksum } from '@/lib/storage'
+import { WINE_MAP_OVERLAY_DEFAULT_STACK, WINE_MAP_OVERLAY_KINDS } from '@/content/wineMapLayers'
 import type {
   CreateWineMapPayload,
   ImportWineMapAreasResult,
+  ImportWineMapLayerElementsResult,
+  ImportWineMapSvgResult,
   ReplaceWineMapAssetResult,
   ResolvedWineMapAreaResult,
+  WineMapAdminLayerRecord,
   WineMapAdminRecord,
   WineMapAreaDto,
   WineMapAreaRecord,
@@ -13,7 +24,15 @@ import type {
   WineMapAssetVersionRecord,
   WineMapDefinitionRecord,
   WineMapDefinitionUpdatePayload,
+  WineMapDotPair,
   WineMapDto,
+  WineMapLayerDto,
+  WineMapLayerElementDto,
+  WineMapLayerElementRecord,
+  WineMapLayerElementUpdatePayload,
+  WineMapLayerRecord,
+  WineMapLayerUpdatePayload,
+  WineMapOverlayKind,
 } from '@/types/wineMaps'
 
 type SupabaseDb = ReturnType<typeof getSupabaseClient>
@@ -124,11 +143,12 @@ export async function getWineMapByKey(key: string): Promise<WineMapDto | null> {
   const mapDefinition = await getWineMapDefinitionByKey(key)
   if (!mapDefinition) return null
 
-  const [assetVersion, areas] = await Promise.all([
+  const [assetVersion, areas, layers] = await Promise.all([
     mapDefinition.active_asset_version_id
       ? getWineMapAssetVersion(mapDefinition.active_asset_version_id)
       : Promise.resolve(null),
     listWineMapAreas(mapDefinition.id),
+    getWineMapLayerDtos(mapDefinition.id),
   ])
 
   return {
@@ -138,6 +158,7 @@ export async function getWineMapByKey(key: string): Promise<WineMapDto | null> {
     scope: mapDefinition.scope,
     svgAssetPath: assetVersion?.svg_asset_path ?? null,
     areas: areas.map(toWineMapAreaDto),
+    layers,
   }
 }
 
@@ -148,6 +169,19 @@ export async function getWineMapsForCountry(countryId: string) {
     .from('wine_map_definitions')
     .select('*')
     .eq('owner_wine_country_id', countryId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+  throwIfError(error)
+  return (data ?? []) as WineMapDefinitionRecord[]
+}
+
+export async function getWineMapsForRegion(regionId: string) {
+  if (!regionId?.trim()) return []
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_definitions')
+    .select('*')
+    .eq('owner_wine_region_id', regionId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
   throwIfError(error)
@@ -189,6 +223,7 @@ export async function getWineMapById(id: string): Promise<WineMapAdminRecord | n
     ...(mapDefinition as WineMapDefinitionRecord),
     svgAssetPath,
     areas: (areas ?? []) as WineMapAreaRecord[],
+    layers: await getWineMapAdminLayers(id),
   }
 }
 
@@ -302,16 +337,11 @@ export async function deleteWineMapArea(id: string): Promise<void> {
   throwIfError(error)
 }
 
-export async function importWineMapAreas(
-  mapDefinitionId: string,
+async function importAreasFromSvg(
+  db: SupabaseDb,
+  map: WineMapAdminRecord,
+  svgText: string,
 ): Promise<ImportWineMapAreasResult> {
-  const db = getSupabaseClient()
-
-  const map = await getWineMapById(mapDefinitionId)
-  if (!map) throw new Error('Wine map not found')
-  if (!map.svgAssetPath) throw new Error('Wine map has no active SVG path')
-
-  const svgText = await fetchSvgText(map.svgAssetPath)
   const importedKeys = extractSvgAreaKeys(svgText)
 
   if (!importedKeys.length) {
@@ -322,7 +352,7 @@ export async function importWineMapAreas(
   const toInsert = importedKeys
     .filter((key) => !existingByKey.has(key))
     .map((key) => ({
-      map_definition_id: mapDefinitionId,
+      map_definition_id: map.id,
       svg_area_id: key,
       label: null,
       is_clickable: false,
@@ -344,6 +374,290 @@ export async function importWineMapAreas(
     createdCount: toInsert.length,
     existingCount: importedKeys.length - toInsert.length,
     totalCount: importedKeys.length,
+  }
+}
+
+/**
+ * Read the map's one SVG and set up everything in it: a row for each new area, and for each
+ * overlay layer found (an Inkscape layer named `water` or `places`) its settings row and a row for
+ * each new element. Existing rows are kept.
+ */
+export async function importWineMapSvg(mapDefinitionId: string): Promise<ImportWineMapSvgResult> {
+  const db = getSupabaseClient()
+
+  const map = await getWineMapById(mapDefinitionId)
+  if (!map) throw new Error('Wine map not found')
+  if (!map.svgAssetPath) throw new Error('Wine map has no active SVG path')
+
+  const svgText = await fetchSvgText(map.svgAssetPath)
+  const areas = await importAreasFromSvg(db, map, svgText)
+
+  const { overlays } = splitOverlayLayers(svgText)
+  const layers: ImportWineMapLayerElementsResult[] = []
+  for (const kind of WINE_MAP_OVERLAY_KINDS) {
+    const overlaySvg = overlays[kind]
+    if (!overlaySvg) continue
+
+    const layer = await ensureWineMapLayer(mapDefinitionId, kind)
+    layers.push(await importLayerElementsFromSvg(layer, overlaySvg, map.active_asset_version_id))
+  }
+
+  return { areas, layers }
+}
+
+/* ----------------------------- OVERLAY LAYERS ----------------------------- */
+
+const IN_FILTER_CHUNK = 100
+const INSERT_CHUNK = 500
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size))
+  return chunks
+}
+
+export function toWineMapLayerElementDto(row: WineMapLayerElementRecord): WineMapLayerElementDto {
+  return {
+    svgElementId: row.svg_element_id,
+    dotSvgElementId: row.dot_svg_element_id,
+    displayText: row.display_text,
+    subtype: row.subtype,
+    sizeClass: row.size_class,
+    isVisible: row.is_visible,
+  }
+}
+
+function normalizeLayerRecord(row: WineMapLayerRecord): WineMapLayerRecord {
+  // numeric columns can arrive as strings
+  return { ...row, opacity: Number(row.opacity) }
+}
+
+/** A map's overlays, bottom to top. */
+export async function listWineMapLayers(mapDefinitionId: string): Promise<WineMapLayerRecord[]> {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layers')
+    .select('*')
+    .eq('map_definition_id', mapDefinitionId)
+    .order('stack')
+    .order('kind')
+  throwIfError(error)
+  return ((data ?? []) as WineMapLayerRecord[]).map(normalizeLayerRecord)
+}
+
+export async function listLayerElements(layerId: string): Promise<WineMapLayerElementRecord[]> {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layer_elements')
+    .select('*')
+    .eq('map_layer_id', layerId)
+    .order('svg_element_id')
+  throwIfError(error)
+  return (data ?? []) as WineMapLayerElementRecord[]
+}
+
+async function listElementsByLayerIds(layerIds: string[]) {
+  const byLayer = new Map<string, WineMapLayerElementRecord[]>()
+  if (!layerIds.length) return byLayer
+
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layer_elements')
+    .select('*')
+    .in('map_layer_id', layerIds)
+    .order('svg_element_id')
+  throwIfError(error)
+
+  for (const row of (data ?? []) as WineMapLayerElementRecord[]) {
+    const rows = byLayer.get(row.map_layer_id) ?? []
+    rows.push(row)
+    byLayer.set(row.map_layer_id, rows)
+  }
+  return byLayer
+}
+
+/** The map's overlay settings for the public page, bottom to top. */
+async function getWineMapLayerDtos(mapDefinitionId: string): Promise<WineMapLayerDto[]> {
+  const layers = await listWineMapLayers(mapDefinitionId)
+  if (!layers.length) return []
+
+  const elements = await listElementsByLayerIds(layers.map((layer) => layer.id))
+
+  return layers.map((layer) => ({
+    id: layer.id,
+    kind: layer.kind,
+    isEnabled: layer.is_enabled,
+    defaultVisible: layer.default_visible,
+    stack: layer.stack,
+    opacity: layer.opacity,
+    elements: (elements.get(layer.id) ?? []).map(toWineMapLayerElementDto),
+  }))
+}
+
+/** Every overlay of a map for the manage portal, including disabled ones. */
+async function getWineMapAdminLayers(mapDefinitionId: string): Promise<WineMapAdminLayerRecord[]> {
+  const layers = await listWineMapLayers(mapDefinitionId)
+  if (!layers.length) return []
+
+  const elements = await listElementsByLayerIds(layers.map((layer) => layer.id))
+  return layers.map((layer) => ({ ...layer, elements: elements.get(layer.id) ?? [] }))
+}
+
+async function getWineMapLayer(mapDefinitionId: string, kind: WineMapOverlayKind) {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layers')
+    .select('*')
+    .eq('map_definition_id', mapDefinitionId)
+    .eq('kind', kind)
+    .maybeSingle()
+  throwIfError(error)
+  return data ? normalizeLayerRecord(data as WineMapLayerRecord) : null
+}
+
+/** The map's layer of this kind, created with defaults on first use. */
+export async function ensureWineMapLayer(
+  mapDefinitionId: string,
+  kind: WineMapOverlayKind,
+): Promise<WineMapLayerRecord> {
+  const existing = await getWineMapLayer(mapDefinitionId, kind)
+  if (existing) return existing
+
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layers')
+    .insert({
+      map_definition_id: mapDefinitionId,
+      kind,
+      stack: WINE_MAP_OVERLAY_DEFAULT_STACK[kind],
+    })
+    .select('*')
+    .single()
+
+  if (error?.code === '23505') {
+    // created concurrently between our read and insert
+    const created = await getWineMapLayer(mapDefinitionId, kind)
+    if (created) return created
+  }
+  throwIfError(error)
+  return normalizeLayerRecord(data as WineMapLayerRecord)
+}
+
+export async function updateWineMapLayer(id: string, payload: WineMapLayerUpdatePayload) {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layers')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .single()
+  throwIfError(error)
+  return normalizeLayerRecord(data as WineMapLayerRecord)
+}
+
+export async function updateLayerElement(id: string, payload: WineMapLayerElementUpdatePayload) {
+  const db = getSupabaseClient()
+  const { data, error } = await db
+    .from('wine_map_layer_elements')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .single()
+  throwIfError(error)
+  return data as WineMapLayerElementRecord
+}
+
+export async function deleteLayerElement(id: string): Promise<void> {
+  const db = getSupabaseClient()
+  const { error } = await db.from('wine_map_layer_elements').delete().eq('id', id)
+  throwIfError(error)
+}
+
+/**
+ * Add a row for every element of an overlay layer that has none yet. Water gets a row per text and
+ * shape; places only per text (a dot is reached through its name's `dot_svg_element_id`). Existing
+ * rows are kept and only marked as seen in this version of the map.
+ */
+async function importLayerElementsFromSvg(
+  layer: WineMapLayerRecord,
+  overlaySvg: string,
+  assetVersionId: string | null,
+): Promise<ImportWineMapLayerElementsResult> {
+  const db = getSupabaseClient()
+
+  const { elements: extracted, duplicateKeys } = extractSvgLayerElements(overlaySvg)
+  const elements =
+    layer.kind === 'places' ? extracted.filter((element) => element.type === 'text') : extracted
+
+  const existing = await listLayerElements(layer.id)
+  const existingKeys = new Set(existing.map((row) => row.svg_element_id))
+  const importedKeys = elements.map((element) => element.key)
+  const seenKeys = new Set(importedKeys)
+
+  const toInsert = elements
+    .filter((element) => !existingKeys.has(element.key))
+    .map((element) => ({
+      map_layer_id: layer.id,
+      svg_element_id: element.key,
+      display_text: element.text,
+      subtype: defaultSubtypeFor(element, layer.kind),
+      source_asset_version_id: assetVersionId,
+      last_seen_in_asset_version_id: assetVersionId,
+    }))
+
+  for (const rows of chunk(toInsert, INSERT_CHUNK)) {
+    const { error } = await db.from('wine_map_layer_elements').insert(rows)
+    throwIfError(error)
+  }
+
+  if (assetVersionId) {
+    const keptKeys = importedKeys.filter((key) => existingKeys.has(key))
+    for (const keys of chunk(keptKeys, IN_FILTER_CHUNK)) {
+      const { error } = await db
+        .from('wine_map_layer_elements')
+        .update({ last_seen_in_asset_version_id: assetVersionId })
+        .eq('map_layer_id', layer.id)
+        .in('svg_element_id', keys)
+      throwIfError(error)
+    }
+  }
+
+  return {
+    kind: layer.kind,
+    importedKeys,
+    createdCount: toInsert.length,
+    existingCount: importedKeys.length - toInsert.length,
+    totalCount: importedKeys.length,
+    missingKeys: existing.map((row) => row.svg_element_id).filter((key) => !seenKeys.has(key)),
+    duplicateKeys,
+  }
+}
+
+/**
+ * Replace a places layer's dot ↔ name pairing with exactly `pairs`. Dots are cleared first because
+ * a dot belongs to one name at a time; if the second step fails the pairs are gone and the
+ * caller should apply them again.
+ */
+export async function replaceLayerDotPairs(layerId: string, pairs: WineMapDotPair[]) {
+  const db = getSupabaseClient()
+
+  const { error: clearError } = await db
+    .from('wine_map_layer_elements')
+    .update({ dot_svg_element_id: null })
+    .eq('map_layer_id', layerId)
+    .not('dot_svg_element_id', 'is', null)
+  throwIfError(clearError)
+
+  for (const rows of chunk(pairs, INSERT_CHUNK)) {
+    const { error } = await db.from('wine_map_layer_elements').upsert(
+      rows.map((pair) => ({
+        map_layer_id: layerId,
+        svg_element_id: pair.textElementId,
+        dot_svg_element_id: pair.dotElementId,
+      })),
+      { onConflict: 'map_layer_id,svg_element_id' },
+    )
+    throwIfError(error)
   }
 }
 
