@@ -252,10 +252,10 @@ function clearFilters() {
             variant="ghost"
             size="sm"
             @click="
-              selectedRegionId = null
-              unmappedOnly = false
-              appellationSearch = ''
-              regionSearch = ''
+              ((selectedRegionId = null),
+              (unmappedOnly = false),
+              (appellationSearch = ''),
+              (regionSearch = ''))
             "
           >
             Reset
