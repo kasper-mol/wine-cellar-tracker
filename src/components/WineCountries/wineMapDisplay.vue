@@ -480,7 +480,11 @@ const nextFrame = () =>
     setTimeout(resolve, 100)
   })
 
+/** Whether this map holds the page's scroll lock; the menu uses the same classes, so only release our own. */
+let holdsScrollLock = false
+
 function lockPageScroll(locked: boolean) {
+  holdsScrollLock = locked
   document.documentElement.classList.toggle('overflow-hidden', locked)
   document.documentElement.classList.toggle('overscroll-none', locked)
 }
@@ -551,8 +555,10 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   if (event.key === 'Escape' && expanded.value) closeExplorer()
 })
 
+// Leaving the page from the sheet (its links) changes the route before this unmounts, so by then
+// `expanded` is already false and the watcher above never gets to release the lock.
 onBeforeUnmount(() => {
-  if (expanded.value) lockPageScroll(false)
+  if (holdsScrollLock) lockPageScroll(false)
 })
 
 async function openAreaPanel(svgAreaId: string, source: 'map' | 'list' = 'map') {
