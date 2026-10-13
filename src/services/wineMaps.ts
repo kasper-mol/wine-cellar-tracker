@@ -157,6 +157,7 @@ export async function getWineMapByKey(key: string): Promise<WineMapDto | null> {
     name: mapDefinition.name,
     scope: mapDefinition.scope,
     svgAssetPath: assetVersion?.svg_asset_path ?? null,
+    dataSources: mapDefinition.data_sources ?? [],
     areas: areas.map(toWineMapAreaDto),
     layers,
   }

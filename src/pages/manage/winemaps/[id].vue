@@ -16,6 +16,7 @@ import MapLayerElementTable from '@/components/manage/winemaps/MapLayerElementTa
 import MapLayerManager from '@/components/manage/winemaps/MapLayerManager.vue'
 import { useFeedback } from '@/composables/useFeedback'
 import { useWineMapOverlayEditor } from '@/composables/useWineMapOverlayEditor'
+import { MAP_DATA_SOURCES } from '@/content/mapDataSources'
 import { fetchSvgText } from '@/lib/svgUtils'
 
 const route = useRoute()
@@ -45,6 +46,7 @@ const mapForm = reactive({
   key: '',
   scope: 'country' as 'country' | 'region' | 'appellation',
   is_active: true,
+  data_sources: [] as string[],
   owner_wine_country_id: '',
   owner_wine_region_id: '',
   owner_wine_appellation_id: '',
@@ -125,6 +127,7 @@ function resetMapForm() {
   mapForm.key = adminMap.value?.key ?? ''
   mapForm.scope = adminMap.value?.scope ?? 'country'
   mapForm.is_active = adminMap.value?.is_active ?? true
+  mapForm.data_sources = [...(adminMap.value?.data_sources ?? [])]
   mapForm.owner_wine_country_id = adminMap.value?.owner_wine_country_id ?? ''
   mapForm.owner_wine_region_id = adminMap.value?.owner_wine_region_id ?? ''
   mapForm.owner_wine_appellation_id = adminMap.value?.owner_wine_appellation_id ?? ''
@@ -338,6 +341,7 @@ async function saveMapDefinition() {
       key: mapForm.key.trim(),
       scope: mapForm.scope,
       is_active: mapForm.is_active,
+      data_sources: mapForm.data_sources,
       owner_wine_country_id: mapForm.owner_wine_country_id || null,
       owner_wine_region_id: mapForm.owner_wine_region_id || null,
       owner_wine_appellation_id: mapForm.owner_wine_appellation_id || null,
@@ -594,6 +598,23 @@ watch(
             </label>
           </div>
         </div>
+
+        <fieldset class="space-y-2">
+          <legend class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Data sources
+          </legend>
+          <label v-for="source in MAP_DATA_SOURCES" :key="source.id" class="flex gap-2 text-sm">
+            <input v-model="mapForm.data_sources" type="checkbox" :value="source.id" class="mt-1" />
+            <span>
+              {{ source.label }}
+              <span class="block text-xs text-muted-foreground">{{ source.description }}</span>
+            </span>
+          </label>
+          <p class="text-xs text-muted-foreground">
+            Ticked sources add their credit line under the public map. Leave all unticked for
+            hand-drawn maps.
+          </p>
+        </fieldset>
 
         <div class="flex flex-wrap items-center gap-3">
           <Button :disabled="savingMap" @click="saveMapDefinition">

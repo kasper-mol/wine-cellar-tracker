@@ -20,6 +20,8 @@ export interface WineMapDefinitionRecord {
 
   active_asset_version_id: string | null
   is_active: boolean
+  /** Open-data sources the map is built from (ids in `MAP_DATA_SOURCES`). Empty for hand-drawn maps. */
+  data_sources: string[]
 
   created_at: string
   updated_at: string
@@ -130,6 +132,7 @@ export interface WineMapDto {
   name: string
   scope: WineMapScope
   svgAssetPath: string | null
+  dataSources: string[]
   areas: WineMapAreaDto[]
   layers: WineMapLayerDto[]
 }
@@ -196,6 +199,7 @@ export interface WineMapDefinitionUpdatePayload {
   owner_wine_region_id?: string | null
   owner_wine_appellation_id?: string | null
   is_active?: boolean
+  data_sources?: string[]
 }
 
 export interface WineCountryOption {

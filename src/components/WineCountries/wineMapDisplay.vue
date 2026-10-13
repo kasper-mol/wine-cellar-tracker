@@ -8,6 +8,7 @@ import {
   WINE_MAP_OVERLAY_KINDS,
   WINE_MAP_OVERLAY_LABELS,
 } from '@/content/wineMapLayers'
+import { creditForSources } from '@/lib/mapCredit'
 import { fetchSvgText, parseViewBox, sanitizeSvg, splitOverlayLayers } from '@/lib/svgUtils'
 import { prepareOverlayMarkup } from '@/lib/wineMapOverlay'
 import { useWineMapsStore } from '@/stores/wineMaps'
@@ -48,6 +49,7 @@ const activeAreaId = computed(() => hoveredAreaId.value ?? selectedAreaId.value 
 const currentMap = computed(() => wineMapsStore.currentMap)
 
 const hasMap = computed(() => Boolean(currentMap.value))
+const creditParts = computed(() => creditForSources(currentMap.value?.dataSources))
 const hasSvg = computed(() => Boolean(svgMarkup.value))
 
 const overlayToggles = computed(() =>
@@ -597,6 +599,20 @@ watch(
     <div v-else class="border-y border-border py-3 text-sm text-foreground/[0.55]">
       No map available for {{ mapKey }} yet.
     </div>
+
+    <p v-if="hasMap && hasSvg && creditParts.length" class="mt-2 text-xs text-muted-foreground">
+      <template v-for="(part, index) in creditParts" :key="index">
+        <a
+          v-if="part.href"
+          :href="part.href"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline underline-offset-2 hover:text-foreground"
+          >{{ part.text }}</a
+        >
+        <template v-else>{{ part.text }}</template>
+      </template>
+    </p>
   </section>
 </template>
 
