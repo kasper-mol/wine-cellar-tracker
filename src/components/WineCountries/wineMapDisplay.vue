@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useEventListener, useMediaQuery } from '@vueuse/core'
+import { Maximize2, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import MapAreaDetail from '@/components/WineCountries/MapAreaDetail.vue'
+import MapAreaList from '@/components/WineCountries/MapAreaList.vue'
+import MapAreaSheet from '@/components/WineCountries/MapAreaSheet.vue'
+import MapLayerToggles from '@/components/WineCountries/MapLayerToggles.vue'
 import WineMapCanvas from '@/components/WineCountries/WineMapCanvas.vue'
 import {
   WINE_MAP_OVERLAY_DEFAULT_STACK,
@@ -9,6 +15,7 @@ import {
   WINE_MAP_OVERLAY_LABELS,
 } from '@/content/wineMapLayers'
 import { creditForSources } from '@/lib/mapCredit'
+import { sheetHeights, type SheetSnap } from '@/lib/sheetSnap'
 import { fetchSvgText, parseViewBox, sanitizeSvg, splitOverlayLayers } from '@/lib/svgUtils'
 import { prepareOverlayMarkup } from '@/lib/wineMapOverlay'
 import { useWineMapsStore } from '@/stores/wineMaps'
@@ -33,7 +40,6 @@ const MAP_MAX_HEIGHT = 'min(78vh, 780px)'
 const wineMapsStore = useWineMapsStore()
 
 const canvas = ref<InstanceType<typeof WineMapCanvas> | null>(null)
-const panel = ref<HTMLElement | null>(null)
 /** The base map's own container: area lookups stay inside it, away from the overlays. */
 const mapContainer = computed<HTMLElement | null>(() => canvas.value?.baseContainer ?? null)
 const svgMarkup = ref('')
@@ -84,10 +90,14 @@ type AreaState = 'base' | 'hover' | 'selected'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
-const BASE_STROKE_WIDTH = '1'
-const INERT_STROKE_WIDTH = '0.75'
-const HOVER_STROKE_WIDTH = '1.4'
-const SELECTED_STROKE_WIDTH = '1.75'
+/* Widths are in the map's own units. Zoomed in they shrink (the canvas sets the scale variables),
+ * otherwise borders would swell with the map and bury the highlight; the highlight shrinks less. */
+const strokeWidth = (units: number, scale: string) => `calc(${units}px * var(${scale}, 1))`
+
+const BASE_STROKE_WIDTH = strokeWidth(1, '--map-label-scale')
+const INERT_STROKE_WIDTH = strokeWidth(0.75, '--map-label-scale')
+const HOVER_STROKE_WIDTH = strokeWidth(1.4, '--map-outline-scale')
+const SELECTED_STROKE_WIDTH = strokeWidth(1.75, '--map-outline-scale')
 
 let palette: AreaPalette | null = null
 
@@ -371,25 +381,207 @@ function applyHighlightState() {
 }
 
 function setHoveredArea(svgAreaId: string | null) {
+  // A tap "hovers" what it touches and nothing ever un-hovers it, which would leave the area
+  // stuck in its hover colour over the selected one.
+  if (svgAreaId !== null && !canHover.value) return
   hoveredAreaId.value = svgAreaId
   applyHighlightState()
 }
 
-const WIDE_QUERY = '(min-width: 1024px)'
+/* ----------------------------- phone: full-screen explorer ----------------------------- */
 
-async function openAreaPanel(svgAreaId: string) {
+/** Below the page's `lg` breakpoint the map is a preview; tapping it opens the explorer. */
+const compact = useMediaQuery('(max-width: 1023.98px)')
+const canHover = useMediaQuery('(hover: hover)')
+
+const route = useRoute()
+const router = useRouter()
+
+/** The explorer lives in the URL, so the phone's back gesture closes it instead of leaving the page. */
+const EXPLORER_QUERY = 'map'
+const expanded = computed(() => compact.value && route.query[EXPLORER_QUERY] === 'open')
+let openedHere = false
+
+const interaction = computed(() => (expanded.value ? 'touch' : compact.value ? 'none' : 'pointer'))
+
+/** The line under the heading; a phone taps the map instead of pointing at it. */
+const heading = computed(() =>
+  compact.value ? 'Tap the map to explore it, or pick an area from the list.' : props.hint,
+)
+
+/** Top bar: 44px buttons plus the gap above and below. */
+const BAR_HEIGHT = 56
+/** Visible height of the sheet when peeking: the handle and the top of the card. */
+const PEEK_HEIGHT = 200
+
+const card = ref<HTMLElement | null>(null)
+const explorer = ref<HTMLElement | null>(null)
+const insetProbe = ref<HTMLElement | null>(null)
+const sheet = ref<InstanceType<typeof MapAreaSheet> | null>(null)
+const sheetSnap = ref<SheetSnap>('peek')
+
+/** The preview keeps its height while its map is out on the full screen, so the page does not jump. */
+const cardHeight = ref<number | null>(null)
+const explorerHeight = ref(0)
+/** The notch and home indicator, in px. */
+const insets = ref({ top: 0, bottom: 0 })
+
+const sheetSizes = computed(() =>
+  sheetHeights(explorerHeight.value, {
+    peek: PEEK_HEIGHT + insets.value.bottom,
+    topInset: insets.value.top + BAR_HEIGHT,
+  }),
+)
+
+function measureExplorer() {
+  if (insetProbe.value) {
+    const style = getComputedStyle(insetProbe.value)
+    insets.value = {
+      top: parseFloat(style.paddingTop) || 0,
+      bottom: parseFloat(style.paddingBottom) || 0,
+    }
+  }
+  explorerHeight.value = explorer.value?.clientHeight ?? 0
+}
+
+/** True once the reader has moved the map themselves, so a new sheet height will not undo it. */
+let userMoved = false
+
+function onUserMove() {
+  userMoved = true
+}
+
+const sheetShown = computed(() => props.showAreaList || Boolean(selectedItem.value))
+
+/** What the top bar and the sheet cover of the map; the canvas centres areas in the rest. */
+const mapInsets = computed(() => ({
+  top: expanded.value ? insets.value.top + BAR_HEIGHT : 0,
+  // A full sheet hides the map; frame for the half-height one the reader will fold back to.
+  bottom:
+    expanded.value && sheetShown.value
+      ? sheetSizes.value[sheetSnap.value === 'full' ? 'half' : sheetSnap.value]
+      : 0,
+}))
+
+/** Centre the selected area in what the top bar and the sheet leave free. */
+function frameSelected() {
+  const id = selectedAreaId.value
+  if (!id || !expanded.value) return
+
+  measureExplorer()
+  canvas.value?.zoomToElement(getAreaElement(id))
+  userMoved = false
+}
+
+/** A frame later, or after 100ms if the browser is not painting (a hidden tab never calls back). */
+const nextFrame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+    setTimeout(resolve, 100)
+  })
+
+function lockPageScroll(locked: boolean) {
+  document.documentElement.classList.toggle('overflow-hidden', locked)
+  document.documentElement.classList.toggle('overscroll-none', locked)
+}
+
+async function openExplorer() {
+  if (expanded.value || !compact.value) return
+  cardHeight.value = card.value?.offsetHeight ?? null
+  openedHere = true
+  await router.push({ query: { ...route.query, [EXPLORER_QUERY]: 'open' } })
+}
+
+function closeExplorer() {
+  if (!expanded.value) return
+  if (openedHere) {
+    router.back() // our own entry: popping it is what a back swipe does too
+    return
+  }
+  const query = { ...route.query }
+  delete query[EXPLORER_QUERY]
+  router.replace({ query })
+}
+
+function onPreviewClick() {
+  if (compact.value && !expanded.value) openExplorer()
+}
+
+// Opened by the URL (a reload, or the phone restoring the app) the map arrives after the flag.
+watch([explorer, insetProbe], () => expanded.value && measureExplorer(), { flush: 'post' })
+
+watch(
+  expanded,
+  async (open, wasOpen) => {
+    // Only touch the page's scroll lock for the explorer's own open and close: the menu uses it too.
+    if (open || wasOpen) lockPageScroll(open)
+
+    if (open) {
+      sheetSnap.value = 'peek'
+      await nextTick()
+      measureExplorer()
+      await nextFrame() // let the full-screen layout settle before framing against its size
+      frameSelected()
+      return
+    }
+    if (!wasOpen) return
+
+    openedHere = false
+    userMoved = false
+    selectedAreaId.value = null
+    hoveredAreaId.value = null
+    applyHighlightState()
+    canvas.value?.resetZoom()
+  },
+  { immediate: true },
+)
+
+// A new sheet height frees or covers part of the map: keep the area in view, unless the reader
+// has taken the map over.
+watch(sheetSnap, async () => {
+  if (!expanded.value || !selectedAreaId.value || userMoved) return
+  await nextTick()
+  frameSelected()
+})
+
+useEventListener(window, 'resize', () => {
+  if (expanded.value) measureExplorer()
+})
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && expanded.value) closeExplorer()
+})
+
+onBeforeUnmount(() => {
+  if (expanded.value) lockPageScroll(false)
+})
+
+async function openAreaPanel(svgAreaId: string, source: 'map' | 'list' = 'map') {
   selectedAreaId.value = svgAreaId
   applyHighlightState()
 
-  // Stacked layout: the panel sits below the map, so a tap on the map would otherwise show nothing.
-  if (window.matchMedia(WIDE_QUERY).matches) return
-  await nextTick()
-  panel.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  if (compact.value) {
+    if (!expanded.value) {
+      await openExplorer() // the watcher frames the area once the map is full screen
+      return
+    }
+    // From the list the reader wants to see where it is; on the map they are already looking.
+    sheetSnap.value =
+      source === 'list' ? 'peek' : sheetSnap.value === 'full' ? 'half' : sheetSnap.value
+    await nextTick()
+    sheet.value?.scrollToTop()
+    frameSelected()
+    return
+  }
+
+  // A small appellation is a speck on a whole-region map: bring it into view.
+  canvas.value?.zoomToElement(getAreaElement(svgAreaId))
 }
 
 function closeAreaPanel() {
   selectedAreaId.value = null
   applyHighlightState()
+  canvas.value?.resetZoom()
+  userMoved = false
 }
 
 function applyMapBindings() {
@@ -444,7 +636,9 @@ function applyMapBindings() {
         setHoveredArea(null)
       })
 
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (event) => {
+        // The phone preview opens on a tap anywhere on it; an area handles its own tap.
+        event.stopPropagation()
         openAreaPanel(area.svgAreaId)
       })
     }
@@ -507,90 +701,139 @@ watch(
     <header class="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div>
         <h2 class="font-heading text-2xl font-semibold text-foreground">Wine Map</h2>
-        <p class="text-sm text-muted-foreground">{{ hint }}</p>
+        <p class="text-sm text-muted-foreground">{{ heading }}</p>
       </div>
 
-      <div
+      <MapLayerToggles
         v-if="overlayToggles.length"
-        role="group"
-        aria-label="Map layers"
-        class="flex flex-wrap gap-2"
-      >
-        <button
-          v-for="toggle in overlayToggles"
-          :key="toggle.kind"
-          type="button"
-          :aria-pressed="toggle.active"
-          class="rounded-full border border-border bg-background px-3 py-1 text-sm text-foreground transition hover:border-primary/60 hover:text-primary"
-          :class="{ 'border-primary/60 text-primary': toggle.active }"
-          @click="toggleOverlay(toggle.kind)"
-        >
-          {{ toggle.label }}
-        </button>
-      </div>
+        :toggles="overlayToggles"
+        @toggle="toggleOverlay"
+      />
     </header>
 
     <div
       v-if="hasMap && hasSvg"
       :class="showAreaList ? 'grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]' : 'block'"
     >
-      <!-- The stage fills its column; the map inside is capped by height, not by width. -->
+      <!-- The stage fills its column; the map inside is capped by height, not by width. On a phone it
+           is a preview: tapping it moves the same map out to a full-screen explorer (teleported to
+           <body>, so nothing around it can clip or re-position it) and this card holds its place. -->
       <div
-        class="flex min-w-0 items-center justify-center rounded-lg border bg-muted/30 p-4 lg:min-h-[440px]"
+        ref="card"
+        class="relative flex min-w-0 items-center justify-center rounded-lg border bg-muted/30 p-4 lg:min-h-[440px]"
+        :style="expanded && cardHeight ? { height: `${cardHeight}px` } : undefined"
+        @click="onPreviewClick"
       >
-        <WineMapCanvas
-          ref="canvas"
-          class="w-full"
-          :style="canvasStyle"
-          :base-markup="svgMarkup"
-          :overlays="overlays"
-          :visible-kinds="visibleKinds"
-        />
+        <Teleport to="body" :disabled="!expanded">
+          <div
+            ref="explorer"
+            :class="expanded ? 'fixed inset-0 z-[60] overflow-hidden bg-background' : 'contents'"
+            :role="expanded ? 'dialog' : undefined"
+            :aria-modal="expanded ? 'true' : undefined"
+            :aria-label="expanded ? `${currentMap?.name} map` : undefined"
+          >
+            <WineMapCanvas
+              ref="canvas"
+              :class="expanded ? 'h-full w-full' : 'w-full'"
+              zoomable
+              :interaction="interaction"
+              :insets="mapInsets"
+              :style="expanded ? undefined : canvasStyle"
+              :base-markup="svgMarkup"
+              :overlays="overlays"
+              :visible-kinds="visibleKinds"
+              @user-move="onUserMove"
+            />
+
+            <template v-if="expanded">
+              <!-- Measures the notch and home indicator, which only CSS can see. -->
+              <div
+                ref="insetProbe"
+                aria-hidden="true"
+                class="pointer-events-none invisible absolute left-0 top-0 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
+              />
+
+              <div
+                class="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-3 pt-[calc(env(safe-area-inset-top)+8px)]"
+              >
+                <button
+                  type="button"
+                  class="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm"
+                  aria-label="Close map"
+                  @click="closeExplorer"
+                >
+                  <X class="size-5" aria-hidden="true" />
+                </button>
+                <MapLayerToggles
+                  v-if="overlayToggles.length"
+                  class="pointer-events-auto justify-end"
+                  floating
+                  :toggles="overlayToggles"
+                  @toggle="toggleOverlay"
+                />
+              </div>
+
+              <MapAreaSheet
+                v-if="sheetShown"
+                ref="sheet"
+                v-model:snap="sheetSnap"
+                class="z-20"
+                :heights="sheetSizes"
+                label="Area details"
+              >
+                <template v-if="selectedItem" #action>
+                  <Button variant="ghost" size="sm" @click="closeAreaPanel">← All areas</Button>
+                </template>
+
+                <MapAreaDetail
+                  v-if="selectedItem"
+                  :target="selectedItem.area.target"
+                  :name="selectedItem.displayName"
+                />
+                <MapAreaList
+                  v-else
+                  :items="areaItems"
+                  :active-id="activeAreaId"
+                  @hover="setHoveredArea"
+                  @select="openAreaPanel($event, 'list')"
+                />
+              </MapAreaSheet>
+            </template>
+          </div>
+        </Teleport>
+
+        <button
+          v-if="compact && !expanded"
+          type="button"
+          class="absolute bottom-3 right-3 flex min-h-11 items-center gap-2 rounded-full border border-border bg-background/90 px-4 text-sm text-foreground shadow-sm"
+          @click.stop="openExplorer"
+        >
+          <Maximize2 class="size-4" aria-hidden="true" />
+          Explore map
+        </button>
       </div>
 
-      <!-- On wide screens the panel takes the map's height and scrolls inside it. -->
-      <aside
-        v-if="showAreaList"
-        ref="panel"
-        class="relative min-w-0 scroll-mt-4 rounded-md border border-border"
-      >
+      <!-- On wide screens the panel takes the map's height and scrolls inside it. On a phone it is
+           only the list: an area opens in the explorer's sheet. -->
+      <aside v-if="showAreaList" class="relative min-w-0 rounded-md border border-border">
         <div class="p-5 lg:absolute lg:inset-0 lg:overflow-y-auto">
           <transition name="region-panel" mode="out-in">
-            <div v-if="selectedItem" :key="`area-${selectedItem.id}`">
+            <div v-if="selectedItem && !compact" :key="`area-${selectedItem.id}`">
               <Button variant="ghost" size="sm" class="-ml-3 mb-2" @click="closeAreaPanel">
                 ← All areas
               </Button>
               <MapAreaDetail :target="selectedItem.area.target" :name="selectedItem.displayName" />
             </div>
 
-            <div v-else key="area-list">
-              <p class="text-[11px] uppercase tracking-[0.18em] text-accent-700">
-                Areas &nbsp;·&nbsp; {{ areaItems.length }}
-              </p>
-
-              <ul class="m-0 mt-2 list-none p-0 sm:columns-2 sm:gap-x-6">
-                <li v-for="item in areaItems" :key="item.id" class="break-inside-avoid">
-                  <button
-                    type="button"
-                    class="group flex w-full items-baseline justify-between gap-2 border-b border-border py-2 text-left font-heading text-[19px] leading-tight transition-colors hover:text-accent-700"
-                    :class="{ 'text-accent-700': activeAreaId === item.id }"
-                    @mouseenter="setHoveredArea(item.id)"
-                    @mouseleave="setHoveredArea(null)"
-                    @focus="setHoveredArea(item.id)"
-                    @blur="setHoveredArea(null)"
-                    @click="openAreaPanel(item.id)"
-                  >
-                    <span>{{ item.displayName }}</span>
-                    <span
-                      aria-hidden="true"
-                      class="font-body text-xs text-foreground/30 transition-colors group-hover:text-accent-700"
-                    >
-                      →
-                    </span>
-                  </button>
-                </li>
-              </ul>
-            </div>
+            <MapAreaList
+              v-else
+              key="area-list"
+              columns
+              :items="areaItems"
+              :active-id="activeAreaId"
+              @hover="setHoveredArea"
+              @select="openAreaPanel($event, 'list')"
+            />
           </transition>
         </div>
       </aside>

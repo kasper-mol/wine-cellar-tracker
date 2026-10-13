@@ -37,6 +37,17 @@ const MAX_DOT_SHARE = 0.04
 
 const LINE_SUBTYPES = new Set(['river', 'canal'])
 
+/**
+ * On the public map the stage sets `--map-label-scale` (1 at rest, falling as the map zooms in), so
+ * names and dots grow more slowly than the map and stay legible without swallowing it.
+ */
+const LABEL_SCALE = 'var(--map-label-scale, 1)'
+
+/** A length in the file's units: fixed, or following the map's zoom when `zoomAware`. */
+function length(value: number, zoomAware: boolean): string {
+  return zoomAware ? `calc(${value}px * ${LABEL_SCALE})` : `${value}px`
+}
+
 export interface OverlayStyleInput {
   kind: WineMapOverlayKind
   elements: WineMapLayerElementDto[]
@@ -44,6 +55,8 @@ export interface OverlayStyleInput {
   selectedKeys?: ReadonlySet<string>
   /** Add click targets around lines and dots. Manage portal only. */
   hitAreas?: boolean
+  /** Size names and dots by `--map-label-scale`, for a map that zooms. Public map only. */
+  zoomAware?: boolean
 }
 
 export interface OverlayGeometry {
@@ -141,7 +154,13 @@ function applyDisplayText(text: Element, displayText: string | null) {
   }
 }
 
-function styleText(text: Element, color: string, italic: boolean, scale: number) {
+function styleText(
+  text: Element,
+  color: string,
+  italic: boolean,
+  scale: number,
+  zoomAware: boolean,
+) {
   const parts = [text, ...Array.from(text.querySelectorAll('tspan'))]
   const mainSize = fontSizeOf(text)
 
@@ -153,12 +172,14 @@ function styleText(text: Element, color: string, italic: boolean, scale: number)
       stroke: HALO,
       'paint-order': 'stroke',
       'stroke-linejoin': 'round',
-      'stroke-width': (size * scale * TEXT_HALO_RATIO).toFixed(3),
+      'stroke-width': zoomAware
+        ? length(Number((size * scale * TEXT_HALO_RATIO).toFixed(3)), true)
+        : (size * scale * TEXT_HALO_RATIO).toFixed(3),
       'font-family': FONT,
       'font-style': italic ? 'italic' : 'normal',
     }
     // Sizes in other units (em, %) are left as drawn.
-    if (ownSize !== null) props['font-size'] = `${ownSize * scale}px`
+    if (ownSize !== null) props['font-size'] = length(ownSize * scale, zoomAware)
     patchStyle(part, props)
   }
 }
@@ -208,7 +229,7 @@ function isDotSized(shape: Element, svg: Element): boolean {
   }
 }
 
-function scaleDot(dot: Element, scale: number) {
+function scaleDot(dot: Element, scale: number, zoomAware: boolean) {
   const tag = localTag(dot)
   const attrs = tag === 'circle' ? ['r'] : tag === 'ellipse' ? ['rx', 'ry'] : []
 
@@ -217,7 +238,10 @@ function scaleDot(dot: Element, scale: number) {
     for (const name of attrs) {
       originals[name] ??= parseFloat(dot.getAttribute(name) ?? '')
       if (Number.isFinite(originals[name])) {
-        dot.setAttribute(name, String((originals[name] as number) * scale))
+        const size = (originals[name] as number) * scale
+        dot.setAttribute(name, String(size))
+        // CSS beats the attribute, so the radius can follow the zoom while the attribute keeps the drawn size.
+        if (zoomAware) patchStyle(dot, { [name]: length(size, true) })
       }
     }
     originalDotAttrs.set(dot, originals)
@@ -234,13 +258,14 @@ function scaleDot(dot: Element, scale: number) {
   }
 }
 
-function styleDot(dot: Element, scale: number, selected: boolean) {
-  scaleDot(dot, selected ? scale * SELECTED_DOT_SCALE : scale)
+function styleDot(dot: Element, scale: number, selected: boolean, zoomAware: boolean) {
+  scaleDot(dot, selected ? scale * SELECTED_DOT_SCALE : scale, zoomAware)
   const radius = parseFloat(dot.getAttribute('r') ?? dot.getAttribute('rx') ?? '')
+  const halo = Number.isFinite(radius) ? Number((radius * DOT_HALO_RATIO).toFixed(3)) : 1
   patchStyle(dot, {
     fill: selected ? SELECTED : PLACE_DOT,
     stroke: HALO,
-    'stroke-width': String(Number.isFinite(radius) ? (radius * DOT_HALO_RATIO).toFixed(3) : 1),
+    'stroke-width': zoomAware ? length(halo, true) : String(halo),
   })
 }
 
@@ -253,7 +278,7 @@ function styleDot(dot: Element, scale: number, selected: boolean) {
  */
 export function styleOverlay(
   container: Element,
-  { kind, elements, selectedKeys, hitAreas = false }: OverlayStyleInput,
+  { kind, elements, selectedKeys, hitAreas = false, zoomAware = false }: OverlayStyleInput,
 ): void {
   const svg = container.querySelector('svg')
   if (!svg) return
@@ -291,14 +316,17 @@ export function styleOverlay(
 
     if (node.type === 'text') {
       applyDisplayText(node.el, governing?.displayText ?? null)
-      if (kind === 'water') styleText(node.el, selected ? SELECTED : WATER_TEXT, true, scale)
-      else styleText(node.el, selected ? SELECTED : PLACE_TEXT, false, scale)
+      if (kind === 'water') {
+        styleText(node.el, selected ? SELECTED : WATER_TEXT, true, scale, zoomAware)
+      } else {
+        styleText(node.el, selected ? SELECTED : PLACE_TEXT, false, scale, zoomAware)
+      }
     } else if (kind === 'water') {
       const hasFill = hasFillOf(node)
       const subtype = governing?.subtype ?? defaultSubtypeFor({ type: 'shape', hasFill }, 'water')
       styleWaterShape(node.el, hasFill, subtype, selected)
     } else {
-      styleDot(node.el, scale, selected)
+      styleDot(node.el, scale, selected, zoomAware)
     }
   }
 

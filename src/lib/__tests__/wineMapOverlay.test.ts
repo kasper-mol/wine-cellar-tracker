@@ -261,3 +261,42 @@ describe('styleOverlay: places', () => {
     expect(css(host, 'svg', 'height')).toBe('auto')
   })
 })
+
+describe('styleOverlay: zoomAware', () => {
+  const places = `
+    <circle id="d1" cx="10" cy="10" r="4" style="fill:#000000"/>
+    <text id="t1" x="14" y="12" style="font-size:10px"><tspan id="a" style="font-size:10px">Bordeaux</tspan></text>`
+  const rows = [row({ svgElementId: 't1', dotSvgElementId: 'd1', sizeClass: 'lg' as const })]
+
+  it('sizes names, halos and dots by the map zoom variable', () => {
+    const host = mount('places', places)
+    styleOverlay(host, { kind: 'places', elements: rows, zoomAware: true })
+
+    expect(css(host, '#ov-places-t1', 'font-size')).toBe('calc(12px * var(--map-label-scale, 1))')
+    expect(css(host, '#ov-places-a', 'font-size')).toBe('calc(12px * var(--map-label-scale, 1))')
+    expect(css(host, '#ov-places-t1', 'stroke-width')).toBe(
+      'calc(2.64px * var(--map-label-scale, 1))',
+    )
+    expect(css(host, '#ov-places-d1', 'r')).toBe('calc(4.8px * var(--map-label-scale, 1))')
+    expect(css(host, '#ov-places-d1', 'stroke-width')).toBe(
+      'calc(1.68px * var(--map-label-scale, 1))',
+    )
+    // The attribute keeps the drawn size, for code that reads it.
+    expect(host.querySelector('#ov-places-d1')?.getAttribute('r')).toBe('4.8')
+  })
+
+  it('does not compound on re-runs', () => {
+    const host = mount('places', places)
+    styleOverlay(host, { kind: 'places', elements: rows, zoomAware: true })
+    styleOverlay(host, { kind: 'places', elements: rows, zoomAware: true })
+    expect(css(host, '#ov-places-t1', 'font-size')).toBe('calc(12px * var(--map-label-scale, 1))')
+    expect(css(host, '#ov-places-d1', 'r')).toBe('calc(4.8px * var(--map-label-scale, 1))')
+  })
+
+  it('is off by default', () => {
+    const host = mount('places', places)
+    styleOverlay(host, { kind: 'places', elements: rows })
+    expect(css(host, '#ov-places-t1', 'font-size')).toBe('12px')
+    expect(css(host, '#ov-places-d1', 'r')).toBeNull()
+  })
+})
