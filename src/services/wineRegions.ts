@@ -7,7 +7,7 @@ import type {
 } from '@/types/wineRegions'
 
 const SELECT_COLUMNS =
-  'id, name, country_id, image_url, created_at, updated_at, country:wine_countries(*)'
+  'id, name, country_id, image_url, is_active, created_at, updated_at, country:wine_countries(*)'
 
 export async function fetchWineRegions() {
   const db = getSupabaseClient()
@@ -21,18 +21,22 @@ export async function fetchRegionsByCountry(countryId: string) {
   const db = getSupabaseClient()
   const { data, error } = await db
     .from('wine_regions')
-    .select('id, name, country_id')
+    .select('id, name, country_id, is_active')
     .eq('country_id', countryId)
     .order('name')
   throwIfError(error)
-  return (data ?? []) as Pick<WineRegionRecord, 'id' | 'name' | 'country_id'>[]
+  return (data ?? []) as Pick<WineRegionRecord, 'id' | 'name' | 'country_id' | 'is_active'>[]
 }
 
 export async function createWineRegion(payload: WineRegionCreatePayload) {
   const db = getSupabaseClient()
   const { data: created, error } = await db
     .from('wine_regions')
-    .insert({ name: payload.name.trim(), country_id: payload.country_id })
+    .insert({
+      name: payload.name.trim(),
+      country_id: payload.country_id,
+      ...(payload.is_active !== undefined ? { is_active: payload.is_active } : {}),
+    })
     .select(SELECT_COLUMNS)
     .single()
   throwIfError(error)
@@ -75,6 +79,7 @@ export async function updateWineRegion(id: string, payload: WineRegionUpdatePayl
     .update({
       ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
       ...(payload.country_id !== undefined ? { country_id: payload.country_id } : {}),
+      ...(payload.is_active !== undefined ? { is_active: payload.is_active } : {}),
       ...(image_url ? { image_url } : {}),
     })
     .eq('id', id)

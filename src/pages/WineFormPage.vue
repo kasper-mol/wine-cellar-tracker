@@ -53,8 +53,8 @@ const scanDraftStore = useScanDraftStore()
 const { feedback, setError, clearFeedback } = useFeedback()
 
 const { userWines } = storeToRefs(mainStore)
-const { regions } = storeToRefs(wineRegionsStore)
-const { appellations } = storeToRefs(wineAppellationsStore)
+const { regions, allRegions } = storeToRefs(wineRegionsStore)
+const { appellations, allAppellations } = storeToRefs(wineAppellationsStore)
 const { grapeVarieties } = storeToRefs(grapeVarietiesStore)
 const { archetypes } = storeToRefs(drinkingWindowStore)
 
@@ -177,9 +177,23 @@ function fillFromScan(scan: ScanResult) {
   scannedFields.value = filled
 }
 
-const appellationsForRegion = computed(() =>
-  form.regionId ? appellations.value.filter((a) => a.region_id === form.regionId) : [],
-)
+/* Switched-off regions and appellations can't be picked for a new bottle. A bottle that already
+ * points at one keeps it, so the current value stays in the list while it is selected. */
+const regionOptions = computed(() => {
+  const current = allRegions.value.find((r) => r.id === form.regionId)
+  if (!current || regions.value.some((r) => r.id === current.id)) return regions.value
+  return [...regions.value, current].sort((a, b) => a.name.localeCompare(b.name))
+})
+
+const appellationsForRegion = computed(() => {
+  if (!form.regionId) return []
+  const options = appellations.value.filter((a) => a.region_id === form.regionId)
+  const current = allAppellations.value.find(
+    (a) => a.id === form.appellationId && a.region_id === form.regionId,
+  )
+  if (!current || options.some((a) => a.id === current.id)) return options
+  return [...options, current].sort((a, b) => a.name.localeCompare(b.name))
+})
 
 const selectedGrapes = computed<GrapeRef[]>(() =>
   form.grapeIds.flatMap((id) => {
@@ -261,8 +275,8 @@ const computedWindow = shallowRef<DrinkingWindow | null>(null)
 
 /** A draft cellar wine, good enough for the engine to read. */
 function draftWine(): UserWine {
-  const region = regions.value.find((r) => r.id === form.regionId)
-  const appellation = appellations.value.find((a) => a.id === form.appellationId)
+  const region = allRegions.value.find((r) => r.id === form.regionId)
+  const appellation = allAppellations.value.find((a) => a.id === form.appellationId)
   return {
     id: editingId.value ?? 'draft',
     name: form.name,
@@ -450,7 +464,7 @@ async function handleSubmit(addAnother = false) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem :value="NONE">— none —</SelectItem>
-                  <SelectItem v-for="region in regions" :key="region.id" :value="region.id">
+                  <SelectItem v-for="region in regionOptions" :key="region.id" :value="region.id">
                     {{ region.name }}
                   </SelectItem>
                 </SelectContent>

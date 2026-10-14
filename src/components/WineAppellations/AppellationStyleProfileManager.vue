@@ -18,7 +18,7 @@ const wineAppellationsStore = useWineAppellationsStore()
 /** The SAVED record, not the copy form's unsaved edits: the DB only accepts a profile for a style
  *  the appellation really has, and grapes chosen from its saved list. */
 const appellation = computed(() =>
-  wineAppellationsStore.appellations.find((row) => row.id === props.appellationId),
+  wineAppellationsStore.allAppellations.find((row) => row.id === props.appellationId),
 )
 const styles = computed<WineStyle[]>(() => appellation.value?.wine_styles ?? [])
 const eligible = computed(() => !!appellation.value && isMultiStyle(appellation.value))

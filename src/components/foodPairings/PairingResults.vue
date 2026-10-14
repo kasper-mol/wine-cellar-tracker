@@ -6,6 +6,7 @@ import MatchScore from '@/components/foodPairings/MatchScore.vue'
 import { mainIngredientMatches } from '@/lib/foodPairingScorer'
 import type { AppellationPairingResult, TagGroup } from '@/lib/foodPairingScorer'
 import { wineStyleLabel } from '@/lib/wineStyles'
+import { useEntryVisibility } from '@/composables/useEntryVisibility'
 import { useAuthStore } from '@/stores/auth'
 import { useFoodPairingsStore } from '@/stores/foodPairings'
 
@@ -13,6 +14,7 @@ const PAGE_SIZE = 12
 
 const foodPairingsStore = useFoodPairingsStore()
 const authStore = useAuthStore()
+const { isAppellationShown } = useEntryVisibility()
 const {
   tags,
   isSearching,
@@ -230,12 +232,18 @@ function classicLine(confirmedBy: string[]) {
                 <p class="col-span-2 text-xs text-foreground/[0.55]">
                   <span v-if="item.wine.producer" class="italic">{{ item.wine.producer }} · </span>
                   <RouterLink
-                    v-if="item.wine.appellation_info"
+                    v-if="
+                      item.wine.appellation_info &&
+                      isAppellationShown(item.wine.appellation_info.id)
+                    "
                     :to="appellationLink(item.wine.appellation_info.id, item.drivingStyle)"
                     class="hover:text-accent-700"
                   >
                     {{ item.wine.appellation_info.name }}
                   </RouterLink>
+                  <template v-else-if="item.wine.appellation_info">
+                    {{ item.wine.appellation_info.name }}
+                  </template>
                   <template v-if="item.wine.appellation_info"> · </template>
                   {{ item.wine.quantity }} bottle{{ item.wine.quantity === 1 ? '' : 's' }}
                   <template v-if="whyLine(item.positiveTagIds)">

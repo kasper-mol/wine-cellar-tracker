@@ -14,12 +14,18 @@ import {
   WINE_MAP_OVERLAY_KINDS,
   WINE_MAP_OVERLAY_LABELS,
 } from '@/content/wineMapLayers'
+import { useEntryVisibility } from '@/composables/useEntryVisibility'
 import { creditForSources } from '@/lib/mapCredit'
 import { sheetHeights, type SheetSnap } from '@/lib/sheetSnap'
 import { fetchSvgText, parseViewBox, sanitizeSvg, splitOverlayLayers } from '@/lib/svgUtils'
 import { prepareOverlayMarkup } from '@/lib/wineMapOverlay'
 import { useWineMapsStore } from '@/stores/wineMaps'
-import type { WineMapCanvasOverlay, WineMapDto, WineMapOverlayKind } from '@/types/wineMaps'
+import type {
+  WineMapAreaDto,
+  WineMapCanvasOverlay,
+  WineMapDto,
+  WineMapOverlayKind,
+} from '@/types/wineMaps'
 
 const props = withDefaults(
   defineProps<{
@@ -38,6 +44,13 @@ const props = withDefaults(
 const MAP_MAX_HEIGHT = 'min(78vh, 780px)'
 
 const wineMapsStore = useWineMapsStore()
+const {
+  visibleRegionIds,
+  visibleAppellationIds,
+  regionsLoaded,
+  appellationsLoaded,
+  isTargetShown,
+} = useEntryVisibility()
 
 const canvas = ref<InstanceType<typeof WineMapCanvas> | null>(null)
 /** The base map's own container: area lookups stay inside it, away from the overlays. */
@@ -124,8 +137,12 @@ function isAreaVisible(area: unknown) {
   return true
 }
 
-function isInteractiveArea(area: { isDecorative: boolean; isClickable: boolean }) {
-  return !area.isDecorative && area.isClickable
+/**
+ * An area whose region or appellation is switched off keeps its shape on the map (it is
+ * geography) but stops being an area: no hover, no click, not in the list.
+ */
+function isInteractiveArea(area: Pick<WineMapAreaDto, 'isDecorative' | 'isClickable' | 'target'>) {
+  return !area.isDecorative && area.isClickable && isTargetShown(area.target)
 }
 
 const areaItems = computed(() =>
@@ -620,7 +637,7 @@ function applyMapBindings() {
 
     const shapes = getShapeElements(el)
     const interactiveArea = isInteractiveArea(area)
-    const nonClickableArea = !area.isClickable
+    const nonClickableArea = !area.isClickable || !isTargetShown(area.target)
     for (const shape of shapes) {
       applyShapeBaseStyles(shape, nonClickableArea)
       applyShapeInteractivity(shape, interactiveArea)
@@ -692,7 +709,13 @@ watch(
 )
 
 watch(
-  () => currentMap.value?.areas,
+  [
+    () => currentMap.value?.areas,
+    visibleRegionIds,
+    visibleAppellationIds,
+    regionsLoaded,
+    appellationsLoaded,
+  ],
   async () => {
     await nextTick()
     applyMapBindings()

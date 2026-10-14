@@ -1,6 +1,7 @@
 import type { FoodAffinity, FoodTagRecord, WineStyleFoodPairingRecord } from '@/types/foodPairings'
 import type { AppellationFoodPairingRecord } from '@/types/foodPairings'
 import type { WineAppellationRecord, WineStyle } from '@/types/wineAppellations'
+import type { WineRegionRecord } from '@/types/wineRegions'
 import type { WineRecord, WineStyle as WineRecordStyle } from '@/types/wines'
 
 export function tag(
@@ -21,6 +22,19 @@ export function tag(
   }
 }
 
+export function region(id: string, overrides: Partial<WineRegionRecord> = {}): WineRegionRecord {
+  return {
+    id,
+    name: id,
+    country_id: 'country',
+    image_url: null,
+    is_active: true,
+    created_at: '',
+    updated_at: '',
+    ...overrides,
+  }
+}
+
 export function appellation(
   id: string,
   wineStyles: WineStyle[] | null,
@@ -33,6 +47,7 @@ export function appellation(
     description: null,
     image_url: null,
     established_year: null,
+    is_active: true,
     created_at: '',
     updated_at: '',
     short_description: null,

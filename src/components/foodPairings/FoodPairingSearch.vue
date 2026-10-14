@@ -36,7 +36,7 @@ const tagsInCategory = computed(() => tags.value.filter((tag) => tag.category ==
 
 /** The first, cold-start search also has to fetch the appellation catalogue. */
 const busyLabel = computed(() =>
-  wineAppellationsStore.appellations.length === 0 ? 'Loading the wine catalogue…' : 'Searching…',
+  wineAppellationsStore.allAppellations.length === 0 ? 'Loading the wine catalogue…' : 'Searching…',
 )
 
 function submitText() {

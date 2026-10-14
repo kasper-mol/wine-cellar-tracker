@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import ImageUploader from '@/components/ImageUploader.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { useWineRegionsStore } from '@/stores/wineRegions'
@@ -37,12 +38,13 @@ defineExpose({ openDialog })
 const form = reactive({
   name: '',
   countryId: '',
+  isActive: true,
   imageFile: null as File | null,
   currentImageUrl: '' as string | null,
 })
 
 const selectedRegion = computed(
-  () => wineRegionsStore.regions.find((r) => r.id === props.regionId) ?? null,
+  () => wineRegionsStore.allRegions.find((r) => r.id === props.regionId) ?? null,
 )
 
 watch(
@@ -50,6 +52,7 @@ watch(
   (region) => {
     form.name = region?.name ?? ''
     form.countryId = region?.country_id ?? ''
+    form.isActive = region?.is_active ?? true
     form.currentImageUrl = region?.image_url ?? ''
     form.imageFile = null
   },
@@ -74,6 +77,7 @@ async function handleUpdate() {
     await wineRegionsStore.update(selectedRegion.value.id, {
       name: form.name.trim(),
       country_id: form.countryId,
+      is_active: form.isActive,
       imageFile: form.imageFile,
     })
     setSuccess('Region updated successfully.')
@@ -115,6 +119,13 @@ async function handleUpdate() {
             </option>
           </select>
         </div>
+        <label class="flex items-center gap-2 text-sm">
+          <Checkbox v-model="form.isActive" />
+          Active
+          <span class="text-foreground/[0.55]">
+            Off hides the region and all its appellations outside the manage portal.
+          </span>
+        </label>
         <div class="space-y-2">
           <ImageUploader
             v-model="form.imageFile"

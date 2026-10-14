@@ -13,8 +13,8 @@ const dwStore = useDrinkingWindowStore()
 const appellationsStore = useWineAppellationsStore()
 const regionsStore = useWineRegionsStore()
 const { archetypes, mappings, producerTiers, hotVintages } = storeToRefs(dwStore)
-const { appellations } = storeToRefs(appellationsStore)
-const { regions } = storeToRefs(regionsStore)
+const { allAppellations: appellations } = storeToRefs(appellationsStore)
+const { allRegions: regions } = storeToRefs(regionsStore)
 
 onMounted(() => {
   dwStore.loadConfig()

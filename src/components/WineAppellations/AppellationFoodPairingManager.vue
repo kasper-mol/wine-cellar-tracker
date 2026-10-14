@@ -27,7 +27,7 @@ const { tags } = storeToRefs(foodPairingsStore)
 /** The SAVED record, not the copy form's unsaved edits: the DB trigger validates an
  *  override's style against the stored `wine_styles`, so the picker must offer exactly those. */
 const appellation = computed(() =>
-  wineAppellationsStore.appellations.find((row) => row.id === props.appellationId),
+  wineAppellationsStore.allAppellations.find((row) => row.id === props.appellationId),
 )
 const savedStyles = computed<WineStyle[]>(() => appellation.value?.wine_styles ?? [])
 

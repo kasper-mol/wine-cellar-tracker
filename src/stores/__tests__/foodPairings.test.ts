@@ -143,6 +143,25 @@ describe('useFoodPairingsStore.search', () => {
     ])
   })
 
+  it('never suggests a switched-off appellation, but still scores the bottles that sit on it', async () => {
+    mocks.fetchWineAppellations.mockResolvedValue([
+      appellation('barolo', ['red'], { name: 'Barolo' }),
+      appellation('hidden', ['red'], { name: 'Hidden', is_active: false }),
+    ])
+    mocks.fetchUserWines.mockResolvedValue([
+      wine('barolo-bottle', 'red', 'barolo'),
+      wine('hidden-bottle', 'red', 'hidden'),
+    ])
+    const store = useFoodPairingsStore()
+    await store.search('steak')
+
+    expect(store.appellationsToShow.map((r) => r.appellation.id)).toEqual(['barolo'])
+    expect(store.cellarResults.map((m) => m.wine.id).sort()).toEqual([
+      'barolo-bottle',
+      'hidden-bottle',
+    ])
+  })
+
   it('loads the catalogue and vocabulary itself when nothing was prefetched', async () => {
     const store = useFoodPairingsStore()
     await store.search('steak')

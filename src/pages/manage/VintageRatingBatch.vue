@@ -35,8 +35,8 @@ const regionsStore = useWineRegionsStore()
 const appellationsStore = useWineAppellationsStore()
 
 const { sources } = storeToRefs(vintageRatingsStore)
-const { regions } = storeToRefs(regionsStore)
-const { appellations } = storeToRefs(appellationsStore)
+const { allRegions: regions } = storeToRefs(regionsStore)
+const { allAppellations: appellations } = storeToRefs(appellationsStore)
 
 const sourceId = ref<string | null>(null)
 const regionId = ref<string | null>(null)

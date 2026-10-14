@@ -17,7 +17,8 @@ const props = defineProps<{
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const { countries } = storeToRefs(wineCountriesStore)
-const { regions } = storeToRefs(wineRegionsStore)
+// Every region the caller can read: a bottle in a switched-off region still names its country.
+const { allRegions: regions } = storeToRefs(wineRegionsStore)
 
 const bottles = computed(() => props.wines.reduce((sum, wine) => sum + wine.quantity, 0))
 const labels = computed(() => new Set(props.wines.map((wine) => wine.name)).size)

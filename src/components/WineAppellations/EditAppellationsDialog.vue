@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import ImageUploader from '@/components/ImageUploader.vue'
 import FeedbackBanner from '@/components/FeedbackBanner.vue'
 import { storeToRefs } from 'pinia'
@@ -40,6 +41,7 @@ const isUpdating = ref(false)
 const editForm = reactive({
   name: '',
   regionId: '',
+  isActive: true,
   imageFile: null as File | null,
   currentImageUrl: '' as string | null,
 })
@@ -47,12 +49,12 @@ const selectedCountryId = ref<string | null>(null)
 const copyForm = reactive(copyFormFromRecord(null))
 
 const selectedAppellation = computed(
-  () => wineAppellationsStore.appellations.find((c) => c.id === props.appellationId) ?? null,
+  () => wineAppellationsStore.allAppellations.find((c) => c.id === props.appellationId) ?? null,
 )
 
 const regionsForCountry = computed(() =>
   selectedCountryId.value
-    ? wineRegionsStore.regions.filter((r) => r.country_id === selectedCountryId.value)
+    ? wineRegionsStore.allRegions.filter((r) => r.country_id === selectedCountryId.value)
     : [],
 )
 
@@ -62,6 +64,7 @@ watch(
     editForm.name = appellation?.name ?? ''
     selectedCountryId.value = appellation?.region?.country_id ?? null
     editForm.regionId = appellation?.region_id ?? ''
+    editForm.isActive = appellation?.is_active ?? true
     editForm.currentImageUrl = appellation?.image_url ?? ''
     editForm.imageFile = null
     Object.assign(copyForm, copyFormFromRecord(appellation ?? null))
@@ -82,6 +85,7 @@ async function handleUpdate() {
     await wineAppellationsStore.update(props.appellationId, {
       name,
       region_id: editForm.regionId,
+      is_active: editForm.isActive,
       imageFile: editForm.imageFile,
       ...copyFormToPayload(copyForm),
     })
@@ -136,6 +140,13 @@ defineExpose({ openDialog })
             <option v-for="r in regionsForCountry" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
         </div>
+        <label class="flex items-center gap-2 text-sm">
+          <Checkbox v-model="editForm.isActive" :disabled="false" />
+          Active
+          <span class="text-foreground/[0.55]"
+            >Hidden from every page outside the manage portal when off.</span
+          >
+        </label>
         <div class="space-y-2">
           <ImageUploader
             v-model="editForm.imageFile"

@@ -38,8 +38,8 @@ const regionsStore = useWineRegionsStore()
 const appellationsStore = useWineAppellationsStore()
 
 const { ratings, sources } = storeToRefs(vintageRatingsStore)
-const { regions } = storeToRefs(regionsStore)
-const { appellations } = storeToRefs(appellationsStore)
+const { allRegions: regions } = storeToRefs(regionsStore)
+const { allAppellations: appellations } = storeToRefs(appellationsStore)
 const showAddSource = ref(false)
 
 const filters = reactive({

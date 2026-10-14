@@ -17,10 +17,12 @@ export function useCellarHoldings() {
   const mainStore = useMainStore()
   const wineRegionsStore = useWineRegionsStore()
   const { userWines } = storeToRefs(mainStore)
-  const { regions } = storeToRefs(wineRegionsStore)
+  // Every region the caller can read, hidden ones included: a bottle in a switched-off region
+  // still counts toward its country, only the lists skip the region.
+  const { allRegions } = storeToRefs(wineRegionsStore)
 
   const countryIdByRegion = computed(
-    () => new Map(regions.value.map((region) => [region.id, region.country_id])),
+    () => new Map(allRegions.value.map((region) => [region.id, region.country_id])),
   )
 
   function group(keyOf: (wine: UserWine) => string | null | undefined) {

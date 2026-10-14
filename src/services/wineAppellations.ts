@@ -40,6 +40,7 @@ const SELECT_COLUMNS = [
   'image_url',
   'region_id',
   'established_year',
+  'is_active',
   'created_at',
   'updated_at',
   'short_description',
@@ -54,7 +55,7 @@ const SELECT_COLUMNS = [
   'fun_fact',
   'copy_status',
   'copy_updated_at',
-  'region:wine_regions(id, name, country_id, created_at, updated_at, country:wine_countries(*))',
+  'region:wine_regions(id, name, country_id, is_active, created_at, updated_at, country:wine_countries(*))',
   `grapes:grape_appellations(
     id,
     appellation_id,
@@ -76,11 +77,11 @@ export async function fetchWineAppellations() {
 }
 
 const LEAN_SELECT =
-  'id, name, region_id, short_description, region:wine_regions(id, name, country_id)'
+  'id, name, region_id, is_active, short_description, region:wine_regions(id, name, country_id, is_active)'
 
 type LeanAppellation = Pick<
   WineAppellationRecord,
-  'id' | 'name' | 'region_id' | 'short_description' | 'region'
+  'id' | 'name' | 'region_id' | 'is_active' | 'short_description' | 'region'
 >
 
 /** Lean fetch by region — no grapes join, used by mappings page. */
@@ -123,6 +124,7 @@ export async function createWineAppellation(payload: WineAppellationCreatePayloa
     .insert({
       name: payload.name.trim(),
       region_id: payload.region_id,
+      ...(payload.is_active !== undefined ? { is_active: payload.is_active } : {}),
       ...copyColumns(payload),
     })
     .select(SELECT_COLUMNS)
@@ -168,6 +170,7 @@ export async function updateWineAppellation(id: string, payload: WineAppellation
     .update({
       ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
       ...(payload.region_id !== undefined ? { region_id: payload.region_id } : {}),
+      ...(payload.is_active !== undefined ? { is_active: payload.is_active } : {}),
       ...copyColumns(payload),
       ...(image_url ? { image_url } : {}),
     })

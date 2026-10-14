@@ -22,7 +22,7 @@ const emit = defineEmits<{
 const wineCountriesStore = useWineCountriesStore()
 const wineRegionsStore = useWineRegionsStore()
 const { countries } = storeToRefs(wineCountriesStore)
-const { regions } = storeToRefs(wineRegionsStore)
+const { allRegions: regions } = storeToRefs(wineRegionsStore)
 
 const regionCount = computed(() => {
   const map = new Map<string, number>()

@@ -26,6 +26,8 @@ export interface WineAppellationRecord {
   description: string | null
   image_url: string | null
   established_year: number | null
+  /** Off hides the appellation outside the manage portal; its region's flag hides it too. */
+  is_active: boolean
   created_at: string
   updated_at: string
   /** Editorial copy. Every field is filled batch by batch and degrades on its own. */
@@ -66,11 +68,13 @@ export interface WineAppellationCopyInput {
 export interface WineAppellationCreatePayload extends WineAppellationCopyInput {
   name: string
   region_id: string
+  is_active?: boolean
   imageFile?: File | null
 }
 
 export interface WineAppellationUpdatePayload extends WineAppellationCopyInput {
   name?: string
   region_id?: string
+  is_active?: boolean
   imageFile?: File | null
 }

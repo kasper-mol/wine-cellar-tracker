@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import GrapeAppellationManager from './GrapeAppellationManager.vue'
 import AppellationCopyFields from './AppellationCopyFields.vue'
 import { copyFormToPayload, emptyCopyForm } from '@/lib/appellationCopyForm'
@@ -28,7 +29,7 @@ const wineAppellationsStore = useWineAppellationsStore()
 const { feedback, setSuccess, setError, clearFeedback } = useFeedback()
 
 const { countries } = storeToRefs(wineCountriesStore)
-const { regions } = storeToRefs(wineRegionsStore)
+const { allRegions: regions } = storeToRefs(wineRegionsStore)
 
 const dialogOpen = ref(false)
 const isCreating = ref(false)
@@ -38,6 +39,7 @@ const createdAppellationId = ref<string | null>(null)
 const createForm = reactive({
   name: '',
   regionId: '',
+  isActive: true,
   imageFile: null as File | null,
 })
 const copyForm = reactive(emptyCopyForm())
@@ -76,6 +78,7 @@ async function handleCreate() {
     const created = await wineAppellationsStore.create({
       name,
       region_id: createForm.regionId,
+      is_active: createForm.isActive,
       imageFile: createForm.imageFile,
       ...copyFormToPayload(copyForm),
     })
@@ -95,6 +98,7 @@ function closeDialog() {
   dialogOpen.value = false
   createForm.name = ''
   createForm.regionId = ''
+  createForm.isActive = true
   createForm.imageFile = null
   Object.assign(copyForm, emptyCopyForm())
   selectedCountryId.value = countries.value[0]?.id ?? null
@@ -142,6 +146,13 @@ defineExpose({ openDialog })
             <option v-for="r in regionsForCountry" :key="r.id" :value="r.id">{{ r.name }}</option>
           </select>
         </div>
+        <label class="flex items-center gap-2 text-sm">
+          <Checkbox v-model="createForm.isActive" :disabled="isCreated" />
+          Active
+          <span class="text-foreground/[0.55]"
+            >Hidden from every page outside the manage portal when off.</span
+          >
+        </label>
         <AppellationCopyFields v-model="copyForm" :disabled="isCreated" />
         <GrapeAppellationManager :appellationId="createdAppellationId" />
         <ImageUploader v-model="createForm.imageFile" label="Appellation Image (optional)" />

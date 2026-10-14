@@ -67,7 +67,7 @@ export const useFoodPairingsStore = defineStore('foodPairings', () => {
    *  lifts an appellation known for a dish above one that merely shares its wine style. Lazy:
    *  built by the first search, and again only when the catalogue or vocabulary changes. */
   const editorialIndex = computed(() =>
-    buildEditorialIndex(useWineAppellationsStore().appellations, tags.value, phraseIndex.value),
+    buildEditorialIndex(useWineAppellationsStore().allAppellations, tags.value, phraseIndex.value),
   )
 
   /* --- current search --- */
@@ -83,10 +83,14 @@ export const useFoodPairingsStore = defineStore('foodPairings', () => {
   const cellarNeedingStyle = ref<WineRecord[]>([])
   let searchToken = 0
 
-  /** "Appellations to try": a derived view, so a display cap never touches cellar matching. */
-  const appellationsToShow = computed(() =>
-    appellationResults.value.filter((r) => r.score > 0).sort(compareAppellationResults),
-  )
+  /** "Appellations to try": a derived view, so a display cap never touches cellar matching.
+   *  Switched-off appellations are scored (a bottle on one still needs its result) but never suggested. */
+  const appellationsToShow = computed(() => {
+    const shown = new Set(useWineAppellationsStore().appellations.map((a) => a.id))
+    return appellationResults.value
+      .filter((r) => r.score > 0 && shown.has(r.appellation.id))
+      .sort(compareAppellationResults)
+  })
   const appellationGroups = computed(() =>
     groupByDrivingTags(appellationsToShow.value, currentMatches.value),
   )
@@ -135,7 +139,7 @@ export const useFoodPairingsStore = defineStore('foodPairings', () => {
    *  loaded the catalogue; scoring against an empty one would be a silent false negative. */
   function ensureAppellationsLoaded(): Promise<unknown> {
     const wineAppellationsStore = useWineAppellationsStore()
-    if (wineAppellationsStore.appellations.length > 0) return Promise.resolve()
+    if (wineAppellationsStore.allAppellations.length > 0) return Promise.resolve()
     if (!appellationsReadyPromise) {
       appellationsReadyPromise = wineAppellationsStore.loadAll().finally(() => {
         appellationsReadyPromise = null
@@ -175,7 +179,9 @@ export const useFoodPairingsStore = defineStore('foodPairings', () => {
     ])
     if (token !== searchToken) return
 
-    const appellations = useWineAppellationsStore().appellations
+    // Everything the caller can read, switched-off ones included: scoreCellarWines looks a bottle's
+    // appellation up in this set, and only appellationsToShow filters what is suggested.
+    const appellations = useWineAppellationsStore().allAppellations
     const scored = scoreAppellations(
       appellations,
       matches,

@@ -2,8 +2,18 @@
  * (case-insensitive). Not in the schema — see also src/content/countries.ts. */
 const CONTENT: Record<string, string> = {
   bordeaux: 'Left-bank gravel and right-bank clay; Cabernet and Merlot in negotiated proportion.',
-  burgundy:
-    'A mosaic of climats where the same two grapes are read through soil rather than blend.',
+  'burgundy - regional':
+    'The umbrella Bourgogne appellations: Pinot Noir, Chardonnay and Aligoté from anywhere in the region.',
+  'burgundy - chablis':
+    'Chardonnay on Kimmeridgian limestone, in the cool north of Burgundy — tense, saline, and set apart from the Côte d’Or.',
+  'burgundy - côte de nuits':
+    'The northern Côte d’Or and the red heartland of Burgundy: Pinot Noir from Gevrey to Nuits-Saint-Georges.',
+  'burgundy - côte de beaune':
+    'The southern Côte d’Or, where the Pinot Noir of Pommard and Volnay gives way to the great Chardonnays of Meursault and Montrachet.',
+  'burgundy - côte chalonnaise':
+    'A quieter run of hills south of the Côte d’Or — Mercurey, Rully, Givry and Montagny — for Pinot Noir and Chardonnay at an easier price.',
+  'burgundy - mâconnais':
+    'Chardonnay country on limestone hills in the south, from open Mâcon wines to the rocky slopes of Pouilly-Fuissé.',
   champagne:
     'Chalk subsoil and a cool marginal climate; the reference case for method over ripeness.',
   'loire valley': 'Six hundred kilometres of river and four unrelated grape traditions.',

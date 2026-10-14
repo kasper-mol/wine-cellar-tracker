@@ -46,6 +46,7 @@ import { useWineAppellationsStore } from '@/stores/wineAppellations'
 import { useWineCountriesStore } from '@/stores/wineCountries'
 import { useWineRegionsStore } from '@/stores/wineRegions'
 import { useFeedback } from '@/composables/useFeedback'
+import { useEntryVisibility } from '@/composables/useEntryVisibility'
 import type { UserWine } from '@/types/wines'
 
 const router = useRouter()
@@ -56,7 +57,8 @@ const wineCountriesStore = useWineCountriesStore()
 const wineAppellationsStore = useWineAppellationsStore()
 const drinkingWindowStore = useDrinkingWindowStore()
 const { userWines, isLoading } = storeToRefs(mainStore)
-const { regions } = storeToRefs(wineRegionsStore)
+const { allRegions } = storeToRefs(wineRegionsStore)
+const { isAppellationShown, isRegionShown } = useEntryVisibility()
 const { countries } = storeToRefs(wineCountriesStore)
 const { feedback, setSuccess, setError } = useFeedback()
 
@@ -138,7 +140,7 @@ const unmappedCount = computed(() => entries.value.filter((entry) => entry.windo
 const countryCodeByRegion = computed(() => {
   const countryById = new Map(countries.value.map((country) => [country.id, country]))
   return new Map(
-    regions.value.map((region) => [
+    allRegions.value.map((region) => [
       region.id,
       region.country?.code ?? countryById.get(region.country_id)?.code ?? null,
     ]),
@@ -410,16 +412,19 @@ async function handleDelete(wine: UserWine) {
               <TableCell>
                 <span class="flex flex-col">
                   <RouterLink
-                    v-if="entry.wine.appellationId"
+                    v-if="entry.wine.appellationId && isAppellationShown(entry.wine.appellationId)"
                     :to="{ name: 'appellation-detail', params: { id: entry.wine.appellationId } }"
                     class="text-[13px] text-accent-700 hover:underline"
                   >
                     {{ entry.wine.appellationName }}
                   </RouterLink>
+                  <span v-else-if="entry.wine.appellationId" class="text-[13px]">
+                    {{ entry.wine.appellationName }}
+                  </span>
                   <span v-else class="text-[13px] text-foreground/40">—</span>
                   <span class="text-xs text-foreground/[0.52]">
                     <RouterLink
-                      v-if="entry.wine.regionId"
+                      v-if="entry.wine.regionId && isRegionShown(entry.wine.regionId)"
                       :to="{ name: 'region-detail', params: { id: entry.wine.regionId } }"
                       class="hover:underline"
                     >
